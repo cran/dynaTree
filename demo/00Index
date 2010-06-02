@@ -1,0 +1,4 @@
+class2d                 classification on simple 2-d data
+design                  sequential design for regression on 1-d data
+fried			RMSE comparison on Friedman 5-d data
+reg1d			regression on simple 1-d data
