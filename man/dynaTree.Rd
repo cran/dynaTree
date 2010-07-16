@@ -11,11 +11,11 @@ Monte Carlo (SMC) method of particle learning (PL)
 }
 \usage{
 dynaTree(X, y, N = 1000, model = c("constant", "linear", "class"),
-         alpha = 0.95, beta = 2, minp = NULL, verb = 10)
+         ab = c(0.95, 2), minp = NULL, sb = NULL, verb = 10)
 dynaTrees(X, y, N = 1000,  R = 10,
           model = c("constant", "linear", "class"),
-          alpha = 0.95, beta = 2, minp = NULL, XX = NULL,
-          plotit = FALSE, rorder = TRUE, verb = 10, ...)
+          ab=c(0.95, 2), minp = NULL, sb = NULL, XX = NULL,
+          plotit = FALSE, proj = 1, rorder = TRUE, verb = 10, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -41,18 +41,23 @@ dynaTrees(X, y, N = 1000,  R = 10,
     \code{"constant"} and \code{"linear"} apply to regression,
     and \code{"class"} to multinomial classification
 }
-  \item{alpha}{
-    tree prior parameter; see details below
+  \item{ab}{
+    tree prior parameter \code{c(alpha, beta)}; see details below
 }
-  \item{beta}{
-    tree prior parameter; see details below
-}
-   \item{minp}{
+\item{minp}{
     A positive scalar integer describing the smallest allowable
     region in the treed partition; if \code{NULL} (default) a
     suitable minimum is calculated based on \code{dim(X)} and
     the type of \code{model} being fit
-}
+  }
+  \item{sb}{
+    an optional two-vector of positive integers indicating
+    \code{c(splitmin, basemax)} for the \code{"linear"} model.
+    It gives the first column of
+    \code{X} on which treed partitioning is allowed, and the last
+    column of \code{X} to use as covariates in the linear model
+    at the leaves, respectively
+  }
   \item{XX}{
     a design matrix of predictive locations (where \code{ncol(XX) ==
       ncol(X)} for \code{dynaTrees}; also see
@@ -63,7 +68,12 @@ dynaTrees(X, y, N = 1000,  R = 10,
     a scalar \code{logical} indicating if the fit should be plotted
     after each of the \code{R} repeats; only applies to 1-d data
     and \code{dynaTrees}
-}
+  }
+  \item{proj}{
+    when \code{ncol(x$X) > 1} and \code{plotit = TRUE}
+    this argument is passed to \code{\link{plot.dynaTree}} to make
+    a 1-d projection using \code{x$X[,proj]}
+  }
   \item{rorder}{
     a scalar \code{logical} indicating if
     the rows of \code{X} (and corresponding components of
@@ -103,8 +113,9 @@ dynaTrees(X, y, N = 1000,  R = 10,
   the complete description of their use at the leaves of the dynamic
   trees, see the Taddy, et al., (2009) reference, below.
   
-  The tree prior is specified by \code{alpha}, \code{beta} and
-  \code{minp}.  It was originally described by Chipman et al., (1998, 2002)
+  The tree prior is specified by \code{ab=c(alpha, beta)}
+  via the and \code{minp}.
+  It was originally described by Chipman et al., (1998, 2002)
   \deqn{p_{\mbox{\tiny split}}(\eta, \mathcal{T}) =
        \alpha*(1+\eta)^\beta}{p(split leaf eta) = alpha*(1+depth(eta))^(-beta)}
      and subsequently augmented to enforce a minimum number of points

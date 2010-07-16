@@ -1,3 +1,13 @@
+1.0-1 (16 July 2010)
+-----
+
+changed to LU version of the hyper-rectangle for proposing 
+grow tree operations
+
+added splitmin and basemax and added proj argument to 
+plot.dynaTree for 1-d projections
+
+
 1.0 (02 June 2010)
 ---
 

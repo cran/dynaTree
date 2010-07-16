@@ -1,3 +1,28 @@
+/****************************************************************************
+ *
+ * Dynamic Trees for Learning and Design
+ * Copyright (C) 2010, Universities of Cambridge and Chicago
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
+ *
+ * Questions? Contact Robert B. Gramacy (bobby@statslab.cam.ac.uk)
+ *
+ ****************************************************************************/
+
+
 #include <stdlib.h>
 #include <assert.h>
 #include "pall.h"
@@ -14,6 +39,7 @@
 Pall *new_pall(double **X, unsigned int n, unsigned int m, 
 	       double *y, double *params, int model_in)
 {
+  /* copy parameters common to all particles */
   unsigned int w;
   Pall *pall;
   pall = (Pall*) malloc(sizeof(struct pall));
@@ -24,9 +50,11 @@ Pall *new_pall(double **X, unsigned int n, unsigned int m,
   pall->a = params[0];
   pall->b = params[1];
   pall->minp = (unsigned int) params[2];
+  pall->smin = (unsigned int) params[3] - 1;
+  pall->bmax = (unsigned int) params[4];
   pall->nc = 0;
 
-  /* get the model */
+  /* determine the model */
   if(model_in == 1) pall->model = CONSTANT;
   else if(model_in == 2) pall->model = LINEAR;
   else if(model_in == 3) {

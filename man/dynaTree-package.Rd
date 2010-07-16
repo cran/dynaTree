@@ -6,7 +6,7 @@
   dynamic tree regression and classification models by
   particle learning (PL), with hooks provided for sequential 
   design and optimization.  Illustrative examples
-  from the seminal dynamic trees paper are facilitated
+  from the original dynamic trees paper are facilitated
   by demos in the package; see demo(package="dynaTree")}
 \details{
 For a fuller overview including a complete list of functions, and

@@ -3,12 +3,13 @@
 ## Initialization and PL for dynamic tree models
 
 dynaTree <- function(X, y, N=1000, model=c("constant", "linear", "class"),
-                     alpha=0.95, beta=2, minp=NULL, verb=10)
+                     ab=c(0.95, 2), minp=NULL, sb=NULL, verb=10)
   {
-    ## extract vitals of X
+    ## extract vitals of X, and check dims
     X <- as.matrix(X)
     m <- ncol(X)
     T <- nrow(X)
+    if(T != length(y)) stop("dim of X and Y mismatch")
 
     ## check model and encode as integer
     model <- match.arg(model)
@@ -22,17 +23,27 @@ dynaTree <- function(X, y, N=1000, model=c("constant", "linear", "class"),
         warning("y without one label in each class")
     }
 
+    ## check splitmin and basemax
+    if(!is.null(sb)) {
+      if(model != "linear") stop("sb only makes sense for linear model\n")
+      if(length(sb) != 2) stop("must have length(sb) = 2")
+      if(sb[1] <= 0 || sb[1] > m) stop("must have 1 <= sb[1] <= ncol(X)")
+      if(sb[2] <= 0 || sb[1] > m) stop("must have 1 <= sb[2] <= ncol(X)")
+    } else sb <- c(1, m)
+    
     ## default minimum number of data points in each parition
     if(is.null(minp)) {
-      if(model == "constant") minp <- 3
-      else if(model == "linear") minp <- 2*ncol(X) + 3
+      if(model == "constant") minp <- 4
+      else if(model == "linear") minp <- 2*sb[2] + 4
       else minp <- 1 ## for classify
     }
 
     ## check tree prior parameters and length of data
-    if( alpha < 0 || alpha >= 1 || beta <=0 || T != length(y) )
-      stop("bad Params")
-    params <- c(alpha, beta, minp)
+    if(length(ab) != 2 || ab[1] < 0 || ab[1] >= 1 || ab[2] <= 0)
+      stop("must have 0 <= ab[1] < 1 and ab[2] > 0 ")
+
+    ## collect all parameters
+    params <- c(ab, minp, sb)
 
     ## for timing purposes
     p1 <- proc.time()[3]
@@ -234,8 +245,9 @@ predict.dynaTree <- function(object, XX, quants=TRUE, alc=FALSE, ei=FALSE,
 
 "dynaTrees" <- function(X, y, N=1000, R=10,
                         model=c("constant", "linear", "class"),
-                        alpha=0.95, beta=2, minp=NULL, XX=NULL,
-                        plotit=FALSE, rorder=TRUE, verb=10, ...)
+                        ab=c(0.95, 2), minp=NULL, sb=NULL, XX=NULL,
+                        plotit=FALSE, proj=1, rorder=TRUE, verb=10,
+                        ...)
   {
     ## use dynaTree and predict by themselves when R = 1
     if(R <= 1) stop("R should be >= 2")
@@ -255,18 +267,16 @@ predict.dynaTree <- function(object, XX, quants=TRUE, alc=FALSE, ei=FALSE,
     ## build the first model, based on the original ordering,
     ## and predict at XX
     if(verb > 0) cat("\nround 1:\n")
-    obj <- dynaTree(X, y, N, model, alpha, beta, minp, verb)
+    obj <- dynaTree(X, y, N, model, ab, minp, sb, verb)
     if(!is.null(XX)) obj <- predict(obj, XX, ...)
     deletecloud(obj); obj$num <- NULL
     obj$num <- NULL
 
     ## possibly plot in 1d case
     if(plotit) {
-      if(ncol(X) != 1)
-        warning("cannot plot when ncol(X) >= 1", immediate.=TRUE)
       if(is.null(XX))
         warning("cannot plot without XX predictive grid", immediate.=TRUE)
-      plot(obj)
+      plot(obj, proj=proj)
     }
 
     ## now do the same ting R-1 more times and combine outputs
@@ -275,12 +285,12 @@ predict.dynaTree <- function(object, XX, quants=TRUE, alc=FALSE, ei=FALSE,
       ## build the Rth model on a the random re-ordering
       ## and predict at XX
       if(verb > 0) cat("\nround ",  r, ":\n", sep="")
-      obj2 <- dynaTree(X[o[,r],], y[o[,r]], N, model, alpha, beta, minp, verb)
+      obj2 <- dynaTree(X[o[,r],], y[o[,r]], N, model, ab, minp, sb, verb)
       if(!is.null(XX)) obj2 <- predict(obj2, XX, ...)
       deletecloud(obj2); obj2$num <- NULL
 
       ## possibly add to the plot in the 1d case
-      if(plotit && ncol(X) == 1) plot(obj2, add=TRUE)
+      if(plotit) plot(obj2, add=TRUE, proj=proj)
 
       ## combine the PL bits of the object
       obj$N <- obj$N + obj2$N

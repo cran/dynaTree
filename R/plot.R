@@ -4,7 +4,7 @@
 ## contains predictive information
 
 plot.dynaTree <-
-  function(x, add=FALSE, ylim=NULL, col=2, lwd=1,
+  function(x, proj=1, add=FALSE, ylim=NULL, col=2, lwd=1,
            ptype=c("each", "mean"), ...)
   {
     ## sanity check
@@ -13,44 +13,51 @@ plot.dynaTree <-
     ## match ptype
     ptype = match.arg(ptype)
 
+    ## check proj
+    if(length(proj) != 1 || proj <= 0 || proj > ncol(x$X))
+      stop("bad proj")
+    
+    ## extract projected X and XX
+    X <- x$X[,proj]; XX <- x$XX[,proj]
+    
     ## usually plot the data first
     if(add==FALSE) {
       if(is.null(ylim)) {
         if(!is.null(x$q1)) ylim <- range(c(x$q1, x$q2))
         else ylim <- range(x$y)
       }
-      plot(x$X, x$y, pch=20, ylim=ylim, ...)
+      plot(X, x$y, pch=20, ylim=ylim, ...)
     }
 
     ## for plotting in orer
-    o <- order(x$XX)
+    o <- order(XX)
 
     ## plot a single set of (3) lines
     if(is.null(x$R)) {
-      lines(x$XX[o], x$mean[o], col=col)
+      lines(XX[o], x$mean[o], col=col)
       if(!is.null(x$q1)) {
-        lines(x$XX[o], x$q1[o], col=col, lty=2)
-        lines(x$XX[o], x$q2[o], col=col, lty=2)
+        lines(XX[o], x$q1[o], col=col, lty=2)
+        lines(XX[o], x$q2[o], col=col, lty=2)
       }
     } else { ## or plot R sets
 
       if(ptype == "each") {
         ## plotting each pair of lines
         for(r in 1:x$R) {
-          lines(x$XX[o], x$mean[o,r], col=col)
+          lines(XX[o], x$mean[o,r], col=col)
           if(!is.null(x$q1)) {
-            lines(x$XX[o], x$q1[o,r], col=col, lty=2)
-            lines(x$XX[o], x$q2[o,r], col=col, lty=2)
+            lines(XX[o], x$q1[o,r], col=col, lty=2)
+            lines(XX[o], x$q2[o,r], col=col, lty=2)
           }
         }
       } else if(ptype == "mean") {
         ## plotting the average of the lines
-        lines(x$XX[o], apply(x$mean, 1, mean)[o],
+        lines(XX[o], apply(x$mean, 1, mean)[o],
               col=col, lwd=lwd)
         if(!is.null(x$q1)) {
-          lines(x$XX[o], apply(x$q1, 1, mean)[o],
+          lines(XX[o], apply(x$q1, 1, mean)[o],
                 col=col, lty=2, lwd=lwd)
-          lines(x$XX[o], apply(x$q2, 1, mean)[o],
+          lines(XX[o], apply(x$q2, 1, mean)[o],
                 col=col, lty=2, lwd=lwd)
         }
       } 

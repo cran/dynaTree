@@ -1,6 +1,32 @@
+/****************************************************************************
+ *
+ * Dynamic Trees for Learning and Design
+ * Copyright (C) 2010, Universities of Cambridge and Chicago
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
+ *
+ * Questions? Contact Robert B. Gramacy (bobby@statslab.cam.ac.uk)
+ *
+ ****************************************************************************/
+
+
 extern "C" 
 {
 #include "matrix.h"
+#include "rhelp.h"
 #include "linalg.h"
 #include "pall.h"
 }
@@ -19,11 +45,9 @@ extern "C"
  * partition 
  */
 
-Tree::Tree(Pall *pall_in, int *p, unsigned int n,
-	   double **rect, Tree* parent_in)
+Tree::Tree(Pall *pall_in, int *p, unsigned int n, Tree* parent_in)
 {
   /* data storage */
-  this->rect = rect;
   this->pall = pall_in;
   this->n = n;
   this->p = p;
@@ -67,8 +91,6 @@ Tree::Tree(Pall *pall_in, int *p, unsigned int n,
  */
 Tree::Tree(const Tree *told, Tree *parentold)
 {
-  unsigned int m = told->pall->m;
-
   /* tree parameters */
   var = told->var; 	
   val = told->val;
@@ -81,8 +103,6 @@ Tree::Tree(const Tree *told, Tree *parentold)
   n = told->n;
   if(told->p) p = new_dup_ivector(told->p, n); 
   else p = NULL;
-  if(told->rect) rect = new_dup_matrix(told->rect, 2, m);
-  else rect = NULL;
 
   /* priors parameters */
   as2 = told->as2;
@@ -95,12 +115,12 @@ Tree::Tree(const Tree *told, Tree *parentold)
   /* extended sufficient stats for linear model */
   bb = told->bb;
   mm = told->mm;
-  if(told->XtXi) XtXi = new_dup_matrix(told->XtXi, m, m);
+  if(told->XtXi) XtXi = new_dup_matrix(told->XtXi, pall->bmax, pall->bmax);
   else XtXi = NULL;
   ldet_XtXi = told->ldet_XtXi;
-  if(told->bmu) bmu = new_dup_vector(told->bmu, m);
+  if(told->bmu) bmu = new_dup_vector(told->bmu, pall->bmax);
   else bmu = NULL;
-  if(told->xmean) xmean = new_dup_vector(told->xmean, m);
+  if(told->xmean) xmean = new_dup_vector(told->xmean, pall->bmax);
   else xmean = NULL;
 
   /* sufficient stats for classification */
@@ -139,7 +159,6 @@ Tree::~Tree(void)
 void Tree::IEconomy(void)
 {
   if(p) { free(p); p = NULL; }
-  if(rect) { delete_matrix(rect); rect = NULL; }
   if(XtXi) { delete_matrix(XtXi); XtXi = NULL; }
   if(bmu) { free(bmu); bmu = NULL; }
   if(xmean) { free(xmean); xmean = NULL; }
@@ -298,6 +317,7 @@ void Tree::grow(int var, double val)
   assert(isLeaf());
     
   /* assign the split */
+  assert(var >= (int) pall->smin);
   this->var = var;
   this->val = val;
 
@@ -305,10 +325,77 @@ void Tree::grow(int var, double val)
   assert(grow_children());
   assert(leftChild->n + rightChild->n == n);
 
-  /* clear p and rect */
+  /* clear p and and other data */
   IEconomy();
 }
 
+
+/*
+ * ChooseVarVal:
+ *
+ * pick a var and val to grow at: either propose
+ * only from valid split locations (LURECT) or 
+ * blindly from the bounding rectangle of the data
+ *
+ */
+
+bool Tree::ChooseVarVal(void)
+{
+  /* do nothing if we can't possibly split */
+  if(n < 2*pall->minp) return false;
+
+#ifdef LURECT /* only use ones that make valid partitions */
+
+  /* allocations */
+  double **rect = new_matrix(2, pall->m - pall->smin);
+  double *x = new_vector(n);
+  int *vars = iseq(pall->smin, pall->m - 1);
+
+  /* calculate the growable dimensions, simultaneously,
+     the edges of the growable rectangle */
+  int growable = 0;
+  for(unsigned int j=0; j<pall->m - pall->smin; j++) {
+    for(unsigned int i=0; i<n; i++) x[i] = pall->X[p[i]][vars[j]];
+    rect[0][j] = quick_select(x, n, pall->minp - 1);
+    rect[1][j] = quick_select(x, n, n - pall->minp);
+    // myprintf(stdout, "(%g,%g) ", rect[0][j], rect[1][j]);
+    if(rect[0][j] < rect[1][j]) vars[growable++] = vars[j];
+  }
+  free(x);
+
+  /* return failure if there are no growable dims, which could 
+     happen even if n >= 2*minp if there are repeated x-values */
+  if(growable == 0) { free(vars); delete_matrix(rect); return false; } 
+
+  /* choose var and val from growable */
+  var = vars[(int) floor(((double)(growable)) * runif(0,1))];
+  val = runif(rect[0][var-pall->smin], rect[1][var-pall->smin]);
+
+  /* clean up */
+  free(vars);
+  delete_matrix(rect);
+
+#else /* blindly choose from rectangle */
+  
+  /* choose dimension uniformly */
+  var = (int) floor(((double)(pall->m - pall->smin)) * runif(0,1));
+  var += pall->smin;
+
+  /* find side of the rectangle */
+  double mn, mx;
+  mn = mx = pall->X[0][var];
+  for(unsigned int i=1; i<n; i++) {
+    if(pall->X[i][var] < mn) mn = pall->X[i][var];
+    else if(pall->X[i][var] > mx) mx = pall->X[i][var];
+  }
+  
+  /* select val */
+  val = runif(mn, mx);
+
+#endif
+
+  return true;
+}
 
 /*
  * growProb:
@@ -325,15 +412,16 @@ double Tree::growProb(int *gvar, double *gval)
   if(pall->a <= 0 || pall->b <= 0) 
     return 0.0;
 
-  /* pick a var and val to grow at */
-  this->var = (int) floor(((double)(pall->m)) * runif(0,1));
-  this->val = runif(rect[0][var], rect[1][var]);
+  /* choose the split var and val */
+  if(!ChooseVarVal()) return 0.0;
 
   /* try growing */
   bool success = grow_children();
+#ifdef LURECT
+  assert(success);  /* should have returned above if not success */
+#else
   if(!success) return 0.0;
-
-  /* already done in grow_child in new Tree(...) call */
+#endif
 
   /* calculate full posterior */
   double prob;
@@ -400,7 +488,6 @@ void Tree::prune(void)
      the children nodes */
   assert(p == NULL);
   p = GetP(&n);
-  rect = GetRect();
 
   /* update the sufficient information */
   Update();
@@ -467,8 +554,7 @@ bool Tree::grow_children(void)
  * the current var and val parameters, and the operation "op"
  */
 
-int Tree::part_child(FIND_OP op, int **pnew, unsigned int *plen,  
-		     double ***newRect)
+int Tree::part_child(FIND_OP op, int **pnew, unsigned int *plen)  
 {
   int *pchild = find_col(pall->X, p, n, var, op, val, plen);
   if(*plen == 0) return 0;
@@ -480,15 +566,6 @@ int Tree::part_child(FIND_OP op, int **pnew, unsigned int *plen,
   *pnew = new_ivector(*plen);
   for(unsigned int j=0; j<*plen; j++) (*pnew)[j] = p[pchild[j]];
   if(pchild) free(pchild); 
-  
-  /* record the boundary of this partition */
-  *newRect = new_matrix(2, pall->m);
-  for(unsigned int i=0; i<pall->m; i++) {
-    (*newRect)[0][i] = rect[0][i];
-    (*newRect)[1][i] = rect[1][i];
-  }
-  if(op == LEQ) (*newRect)[1][var] = val; 
-  else { assert(op == GT); (*newRect)[0][var] = val; }
   
   return (*plen);
 }
@@ -506,15 +583,14 @@ unsigned int Tree::grow_child(Tree** child, FIND_OP op)
 	
   /* find partition indices */
   unsigned int plen; 
-  double **newRect = NULL;
   int *pnew = NULL; 
   
   /* construct the partition, assuming it can be made */
-  int success = part_child(op, &pnew, &plen, &newRect);
+  int success = part_child(op, &pnew, &plen);
   if(success == 0) return success; /* bad partition */
   
   /* grow the Child */
-  (*child) = new Tree(pall, pnew, plen, newRect, this);
+  (*child) = new Tree(pall, pnew, plen, this);
   return plen;
 }
 
@@ -614,7 +690,7 @@ Tree** Tree::buildTreeList(int len)
 
 bool Tree::wellSized(void) const
 {
-  if(n <= pall->minp) return false;
+  if(n < pall->minp) return false;
   else return true;
 }
 
@@ -739,7 +815,7 @@ double Tree::Posterior(void) /* log post! */
   /* otherwise continue with constan and linear treatment */
 
   /* linear model adjustment of dm */
-  if(pall->model == LINEAR && bb > 0) dm += (double) pall->m;
+  if(pall->model == LINEAR && bb > 0) dm += (double) pall->bmax;
 
   /* invalid leaf node */
   if(syy-bb <= 0.0) return -1e300*1e300;
@@ -779,9 +855,6 @@ Tree* Tree::AddDatum(unsigned int index)
     p[n] = index;
     n++;
 
-    /* check to see if the rectangle needs expanding */
-    ExpandRect(pall->X[index]);
-
     /* update the classification model */
     if(pall->model == CLASS) counts[(int) pall->y[index]]++;
     else { /* constant and linear models */
@@ -809,21 +882,6 @@ Tree* Tree::AddDatum(unsigned int index)
 
 
 /*
- * ExpandRect:
- *
- * possibly expand the rectangle to contain this new point
- */
-
-void Tree::ExpandRect(double *x)
-{
-  for(unsigned int i=0; i<pall->m; i++) {
-    if(x[i] > rect[1][i]) rect[1][i] = x[i];
-    else if(x[i] < rect[0][i]) rect[0][i] = x[i];
-  }
-}
-
-
-/*
  * GetP:
  *
  * combine the p-vectors from the left and right children --
@@ -845,30 +903,6 @@ int* Tree::GetP(unsigned int *n)
     pl = (int*) realloc(pl, sizeof(int) * (*n));
     dupiv(pl+nl, pr, nr); free(pr);
     return pl;
-  }
-}
-
-
-/*
- * GetP:
- *
- * combine the rectangles from the left and right children --
- * mainly used in the ::prune operation
- */
-
-double** Tree::GetRect(void)
-{
-  if(isLeaf()) {
-    return new_dup_matrix(this->rect, 2, pall->m);
-  } else {
-    double **rl = leftChild->GetRect();
-    double **rr = rightChild->GetRect();
-    for(unsigned int i=0; i<pall->m; i++) {
-      rl[0][i] = myfmin(rl[0][i], rr[0][i]);
-      rl[1][i] = myfmax(rl[1][i], rr[1][i]);
-    }
-    delete_matrix(rr);
-    return rl;
   }
 }
 
@@ -914,7 +948,7 @@ double Tree::PostPred(double *x, double y)
   } /* otherwise constant and linear model */
 
   /* adjustment for linear model */
-  if(pall->model == LINEAR && bb > 0) dm += (double) pall->m;
+  if(pall->model == LINEAR && bb > 0) dm += (double) pall->bmax;
 
   /* check for proper within-partition model */
   if(syy-bb <= 0.0) return 0.0;
@@ -950,7 +984,7 @@ double Tree::LinearAdjust(double *x, double *bmean, double *xtXtXix,
 {
   assert(pall->model == LINEAR);
 
-  unsigned int m = pall->m;
+  unsigned int m = pall->bmax;
   
   /* adjustments under the linear model */
   if(bmean) {
@@ -1052,7 +1086,7 @@ void Tree::UpdateLinear(void)
   for(unsigned int i=0; i<n; i++) y[i] -= mu;
 
   /* build X and subtract off mean */
-  unsigned int m = pall->m;
+  unsigned int m = pall->bmax;
   double **Xorig = new_matrix(n, m);
   for(unsigned int i=0; i<n; i++) dupv(Xorig[i], pall->X[p[i]], m);
   double **X = new_dup_matrix(Xorig, n, m);
@@ -1131,7 +1165,7 @@ void Tree::Predict(double *x, double *mean, double *sd, double *df,
 
      double dm = (double) 1.0;
      double dn = (double) n;
-     if(pall->model == LINEAR && bb > 0) dm += (double) pall->m;
+     if(pall->model == LINEAR && bb > 0) dm += (double) pall->bmax;
 
      double xtXtXix = 1.0/dn;
      double bmean = 0.0;
@@ -1205,7 +1239,7 @@ double Tree::ALC(double *x, double *y)
      /* get double versions of m and n */
      double dn = (double) n;
      double dm = (double) 1.0;
-     if(pall->model == LINEAR && bb > 0) dm += (double) pall->m;
+     if(pall->model == LINEAR && bb > 0) dm += (double) pall->bmax;
 
      /* important prediction quanties */
      double xtXtXix = 1.0/n;

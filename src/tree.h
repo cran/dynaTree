@@ -1,3 +1,28 @@
+/****************************************************************************
+ *
+ * Dynamic Trees for Learning and Design
+ * Copyright (C) 2010, Universities of Cambridge and Chicago
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
+ *
+ * Questions? Contact Robert B. Gramacy (bobby@statslab.cam.ac.uk)
+ *
+ ****************************************************************************/
+
+
 #ifndef __TREE_H__
 #define __TREE_H__ 
 
@@ -18,7 +43,6 @@ class Tree
   /* data */
   unsigned int n;               /* size of data in current parition */
   int *p;			/* n, indices into original data */
-  double **rect;                /* bounding rectangle of data */
 
   /* sufficient stats for the classification model */
   unsigned int *counts;         /* counts in each class */
@@ -55,21 +79,18 @@ class Tree
   
   /* creating new leaves, and removing them */
   unsigned int grow_child(Tree** child, FIND_OP op);
-  int part_child(FIND_OP op, int **pnew, unsigned int *plen, 
-		 double ***newRect);
+  int part_child(FIND_OP op, int **pnew, unsigned int *plen);
   bool grow_children(void);
 
-  /* compute lost of the posterior
-   * (likelihood + plus some prior stuff) 
-   * of a particular lef, or all leaves */
-    
+  /* calculating split locations */
+  bool ChooseVarVal(void);
+
  public:
 
   Pall *pall;		        /* holding stuff common to all particles */
   
   /* constructor, destructor and misc partition initialization */
-  Tree(Pall *pall, int *p, unsigned int n, double **rect, 
-       Tree* parent_in);
+  Tree(Pall *pall, int *p, unsigned int n, Tree* parent_in);
   Tree(const Tree *oldt, Tree *parent);
   ~Tree(void);
   void IEconomy(void);
@@ -116,11 +137,9 @@ class Tree
 
   /* adding data to a leaf node */
   Tree* AddDatum(unsigned int index);
-  void ExpandRect(double *x);
 
   /* collecting info from leaves to construct parents */
   int* GetP(unsigned int *n);
-  double** GetRect(void);
 
   /* summary statistics */
   int leavesN(void);

@@ -10,8 +10,8 @@ tree (regression) models for 1-d data -- provided primarily
 for use in our 1-d examples and for illustrative purposes
 }
 \usage{
-\method{plot}{dynaTree}(x, add = FALSE, ylim = NULL, col = 2,
-              lwd = 1, ptype = c("each", "mean"), ...)
+\method{plot}{dynaTree}(x, proj = 1, add = FALSE,ylim = NULL,
+              col = 2, lwd = 1, ptype = c("each", "mean"), ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -21,6 +21,11 @@ for use in our 1-d examples and for illustrative purposes
   \item{add}{
     a scalar \code{logical} indicating if the lines/points should
     be \dQuote{added} to an existing plot
+  }
+  \item{proj}{
+    when \code{ncol(x$X) > 1} this argument can be used to plot
+    a 1-d projection by specifying which column of \code{x$X}
+    should be used to make the plot
   }
   \item{ylim}{
     user-specified y-axis limits values; see \code{\link{plot}}
