@@ -1,3 +1,47 @@
+1.1 (13 May 2011)
+---
+
+added copy.dynaTree function using copy_cloud_R and
+rejuvinate.dynaTree using rejuvinate_R; these are
+still undocumented
+
+updated JASA reference and changed to Booth addresses
+
+discovered/fixed bug in classification marginal 
+likelihood
+
+initial implementation of sensitivity analysis code
+
+initial implementation of online retiring, and added
+alcX and entropyX calculations for choosing retires,
+and drift for historical retirement
+
+multiple growing rectangle proposing types
+
+specify Xref locations in ALC calculation, and analytic
+version by specifying a rectangle through Xref
+
+propagate posterior probabilities now in log space
+
+implemented residual resampling for resample step
+
+streamlined prediction by accumulating (summing) each
+particle's predictive rather than storing in big 
+matrices which are then averaged
+
+implemented predictive probability calculations for 
+Expected Likelihood comparisons
+
+
+1.0-2 (10 Aug 2010)
+-----
+
+simplified the prediction routines under the LM with 
+centering
+
+also now allows icept = FALSE with LM
+
+
 1.0-1 (16 July 2010)
 -----
 

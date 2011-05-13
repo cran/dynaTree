@@ -10,7 +10,7 @@ new input/output pairs, primarily to facilitate sequential
 design and optimization applications
 }
 \usage{
-\method{update}{dynaTree}(object, X, y, verb = 10, ...)
+\method{update}{dynaTree}(object, X, y, verb = round(length(y)/10), ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -54,19 +54,20 @@ design and optimization applications
   i.e., a \code{"dynaTree"}-class object
 }
 \references{
-   Taddy, M.A., Gramacy, R.B., and Polson, N. (2009).
+ Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
   \dQuote{Dynamic trees for learning and design}
-  Tech. Rep. arXiv:0912.1636, University of Cambridge.
+  Journal of the American Statistical Association, 106(493), pp. 109-123;
+  arXiv:0912.1636
 
   Carvalho, C., Johannes, M., Lopes, H., and Polson, N. (2008).
   \dQuote{Particle Learning and Smoothing}.
   Discussion Paper 2008-32, Duke University Dept. of Statistical
   Science.
 
-  \url{http://www.statslab.cam.ac.uk/~bobby/dynaTree.html}
+  \url{http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html}
 }
 \author{
-Robert B. Gramacy \email{bobby@statslab.cam.ac.uk} and\cr
+Robert B. Gramacy \email{rbgramacy@chicagobooth.edu} and\cr
 Matt Taddy \email{taddy@chicagobooth.edu}
 }
 \note{

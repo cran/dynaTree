@@ -1,20 +1,21 @@
 Package: dynaTree
 Title: Dynamic trees for learning and design
-Version: 1.0-1
-Date: 2010-07-16
-Author: Robert B. Gramacy <bobby@statslab.cam.ac.uk> and Matt A. Taddy
-        <taddy@chicagobooth.edu>
-Depends: R (>= 2.4)
+Version: 1.1
+Date: 2011-05-13
+Author: Robert B. Gramacy <rbgramacy@chicagobooth.edu> and Matt A.
+        Taddy <taddy@chicagobooth.edu>
+Depends: R (>= 2.4), methods
 Suggests: akima, tgp, plgp, MASS
 Description: Inference by sequential Monte Carlo for dynamic tree
-        regression and classification models by particle learning (PL),
-        with hooks provided for sequential design and optimization.
-        Illustrative examples from the original dynamic trees paper are
-        facilitated by demos in the package; see
+        regression and classification models by, with hooks provided
+        for sequential design and optimization, fully online learning
+        with drift, variable selection, and sensitivity analysis of
+        inputs.  Illustrative examples from the original dynamic trees
+        paper are facilitated by demos in the package; see
         demo(package="dynaTree")
-Maintainer: Robert B. Gramacy <bobby@statslab.cam.ac.uk>
+Maintainer: Robert B. Gramacy <rbgramacy@chicagobooth.edu>
 License: LGPL
-URL: http://www.statslab.cam.ac.uk/~bobby/dynaTree.html
-Packaged: 2010-07-16 17:27:28 UTC; bobby
+URL: http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html
+Packaged: 2011-05-13 21:23:36 UTC; rgramacy
 Repository: CRAN
-Date/Publication: 2010-07-24 20:09:56
+Date/Publication: 2011-05-15 07:29:35

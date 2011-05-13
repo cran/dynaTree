@@ -10,7 +10,7 @@ statistics at new design points (i.e., active learning heuristics)
 for dynamic tree models
 }
 \usage{
-\method{predict}{dynaTree}(object, XX, quants = TRUE, alc = FALSE,
+\method{predict}{dynaTree}(object, XX, yy = NULL, quants = TRUE,
                  ei = FALSE, verb = 0, ...)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -22,15 +22,17 @@ for dynamic tree models
     a design \code{matrix} of predictive locations (where \code{ncol(XX) ==
       ncol(X)})
 }
-  \item{quants}{
+  \item{yy}{
+  an optional vector of \dQuote{true} responses at the \code{XX}
+  predictive locations at which the log posterior probability are
+  to be reported
+  }  	 
+ \item{quants}{
     a scalar \code{logical} indicating if predictive quantiles
     are desired (useful for visualization, but less so for active
-    learning)
-}
-  \item{alc}{
-    a scalar \code{logical} indicating if the ALC statistic
-    (expected reduction in predictive variance) should be
-    calculated and returned
+    learning); calculating predictive quantiles is expensive and should
+    be turned off if prediction is not being used for visualization,
+    e.g., if used for active learning
 }
   \item{ei}{
     a scalar \code{logical} indicating if the expected improvement
@@ -54,10 +56,14 @@ for dynamic tree models
 
   The value(s) calculated are appended to \code{object}; the new
   fields are described below
+
+  ALC calculations have been moved to the \code{\link{alc.dynaTree}}
+  function(s)
 }
 \value{
   The object returned is of class \code{"dynaTree"}, which includes a
-  copy of the list elements \code{object} with the following (predictive)
+  copy of the list elements from the \code{object} passed in, 
+  with the following (predictive)
   additions depending on whether \code{object$model} is for
   regression (\code{"constant"} or \code{"linear"}) or classification
   (\code{"class"}).
@@ -74,10 +80,11 @@ for dynamic tree models
   \item{q2 }{ a vector containing an estimate of the 95\% quantile of
     the predictive distribution at the \code{XX} locations, unless
     \code{quants = FALSE}}
-  \item{alc }{ a vector containing an estimate of the ALC statistic,
-    unless \code{alc = FALSE}}
-  \item{ei }{ a vector containing an estimate of the ALC statistic,
-    unless \code{ei = FALSE}}
+  \item{yypred }{ if \code{yy != NULL} then this contains the
+    predictive probability of the true \code{yy} values at the
+    \code{XX} locations}
+ \item{ei }{ a vector containing an estimate of the EI statistic,
+    unless \code{ei = FALSE}};
 
   For classification:
 
@@ -89,19 +96,21 @@ for dynamic tree models
 }
 \references{
 
-  Taddy, M.A., Gramacy, R.B., and Polson, N. (2009).
+ Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
   \dQuote{Dynamic trees for learning and design}
-  Tech. Rep. arXiv:0912.1636, University of Cambridge.
+  Journal of the American Statistical Association, 106(493), pp. 109-123;
+  arXiv:0912.1636
   
-  \url{http://www.statslab.cam.ac.uk/~bobby/dynaTree.html}
+  \url{http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html}
 }
 \author{
-Robert B. Gramacy \email{bobby@statslab.cam.ac.uk} and\cr
+Robert B. Gramacy \email{rbgramacy@chicagobooth.edu} and\cr
 Matt Taddy \email{taddy@chicagobooth.edu}}
 
 \seealso{
 \code{\link{dynaTree}}, \code{\link{update.dynaTree}},
-  \code{\link{plot.dynaTree}}}
+  \code{\link{plot.dynaTree}}, \code{\link{alc.dynaTree}}, 
+  \code{\link{entropyX.dynaTree}}}
 \examples{
 ## see the example(s) section(s) of dynaTree and
 ## update.dynaTree and the demos (demo(package=dynaTree))

@@ -27,6 +27,7 @@
 #include <assert.h>
 #include "pall.h"
 #include "rhelp.h"
+#include "Rmath.h"
 #include "matrix.h"
 
 /*
@@ -45,13 +46,26 @@ Pall *new_pall(double **X, unsigned int n, unsigned int m,
   pall = (Pall*) malloc(sizeof(struct pall));
   pall->X = new_dup_matrix(X, n, m);
   pall->n = n;
+  pall->g = 0;
   pall->m = m;
   pall->y = new_dup_vector(y, n);
-  pall->a = params[0];
-  pall->b = params[1];
-  pall->minp = (unsigned int) params[2];
-  pall->smin = (unsigned int) params[3] - 1;
-  pall->bmax = (unsigned int) params[4];
+  pall->nu0 = params[0];
+  pall->s20 = params[1];
+  pall->a = params[2];
+  pall->b = params[3];
+  pall->minp = (unsigned int) params[4];
+  pall->smin = (unsigned int) params[5] - 1;
+  pall->bmax = (unsigned int) params[6];
+  pall->icept = (unsigned int) params[7];
+
+  /* determine the growing rectangle proposal typr */
+  switch((int) params[8]) {
+  case 1: pall->rprop = LUALL; break;
+  case 2: pall->rprop = LUVAR; break;
+  case 3: pall->rprop = REJECT; break;
+  default: error("rprop %d not defined\n", (int) params[8]);
+  }
+  pall->icept = (unsigned int) params[7];
   pall->nc = 0;
 
   /* determine the model */
@@ -66,6 +80,44 @@ Pall *new_pall(double **X, unsigned int n, unsigned int m,
     pall->model = CONSTANT;
   }
 
+  /* allocate temporary vector of length bmax in LINEAR model */
+  if(pall->model == LINEAR) pall->bmaxv = new_vector(pall->bmax);
+  else pall->bmaxv = NULL;
+
+  return pall;
+}
+
+
+/*
+ * copy_pall:
+ *
+ * copy an existing pall
+ */
+
+Pall *copy_pall(Pall *pold)
+{
+  Pall *pall;
+  assert(pold);
+  pall = (Pall*) malloc(sizeof(struct pall));
+  pall->X = new_dup_matrix(pold->X, pold->n, pold->m);
+  pall->n = pold->n;
+  pall->g = pold->g;
+  pall->m = pold->m;
+  pall->y = new_dup_vector(pold->y, pold->n);
+  pall->nu0 = pold->nu0;
+  pall->s20 = pold->s20;
+  pall->a = pold->a;
+  pall->b = pold->b;
+  pall->minp = pold->minp;
+  pall->smin = pold->smin;
+  pall->bmax = pold->bmax;
+  pall->icept = pold->icept;
+  pall->rprop = pold->rprop;
+  pall->icept = pold->icept;
+  pall->nc = pold->nc;
+  pall->model = pold->model;
+  if(pold->bmaxv) pall->bmaxv = new_dup_vector(pold->bmaxv, pold->bmax);
+  else pall->bmaxv = NULL;
   return pall;
 }
 
@@ -80,6 +132,7 @@ void delete_pall(Pall *pall)
 {
   delete_matrix(pall->X);
   free(pall->y);
+  if(pall->bmaxv) free(pall->bmaxv);
   free(pall);
 }
 
@@ -96,7 +149,7 @@ void add_data(Pall *pall, double **X, unsigned int n, double *y)
 
   /* sanity check for classification */
   if(pall->model == CLASS)
-    for(unsigned int i=0; i<n; i++)
+    for(i=0; i<n; i++)
       assert(y[i] < pall->nc);
 
   /* new data size */
@@ -115,4 +168,91 @@ void add_data(Pall *pall, double **X, unsigned int n, double *y)
 
   /*  update n */
   pall->n = nnew;
+}
+
+
+/*
+ * retire:
+ *
+ * retire/remove the index(ed) entry of the X and y
+ * elements of the pall structure 
+ */
+
+void retire(Pall *pall, unsigned int index)
+{
+  double **Xnew;
+  unsigned int k;
+
+  /* sanity check */
+  assert(index < pall->n);
+
+  /* remove from X and Y and al (if used) */
+  (pall->n)--;
+  if(index < (int) pall->n) {
+    dupv(pall->X[index], pall->X[pall->n], pall->m);
+    pall->y[index] = pall->y[pall->n];
+  }
+
+  /* reduce the size of y and X */
+  pall->y = (double*) realloc(pall->y, sizeof(double)*pall->n);
+  Xnew = (double**) malloc(sizeof(double*) * pall->n);
+  Xnew[0] = (double*) realloc(pall->X[0], sizeof(double) * pall->n * pall->m);
+  free(pall->X);
+  for(k=1; k<pall->n; k++) Xnew[k] = Xnew[k-1] + pall->m;
+  pall->X = Xnew;
+
+  /* keep track of the fact that we've removed an entry */
+  (pall->g)++;
+}
+
+
+/*
+ * reorder:
+ *
+ * reorder the X-y pairs 
+ */
+
+void reorder(Pall *pall, int *o)
+{
+  unsigned int i;
+
+  /* sanity check */
+  assert(o);
+
+  /* allocate new space */
+  double **Xnew = new_matrix(pall->n, pall->m);
+  double *ynew = new_vector(pall->n);
+
+  /* fill that space */
+  for(i=0; i<pall->n; i++) {
+    dupv(Xnew[o[i]], pall->X[i], pall->m);
+    ynew[o[i]] = pall->y[i];
+  }
+
+  /* free old space and copy pointer */
+  delete_matrix(pall->X); pall->X = Xnew;
+  free(pall->y); pall->y = ynew;
+}
+
+
+/*
+ * EI:
+ *
+ * calculates the expected improvement following
+ * Williams et al by integrating over the parameters
+ * to the GP predictive
+ */
+
+double EI(const double m, const double sd, const double df,
+          const double fmin)
+{
+  double diff, diffs, scale, ei;
+
+  diff = fmin - m;
+  diffs = diff/sd;
+  scale = (df*sd + sq(diff)/sd)/(df-1.0);
+  ei = diff*pt(diffs, (double) df, 1, 0);
+  ei += scale*dt(diffs, (double) df, 0);
+
+  return(ei);
 }

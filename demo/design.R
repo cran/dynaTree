@@ -4,6 +4,7 @@
 
 ## load the libraries
 library(dynaTree)
+## dyn.load("../dynaTree/src/dynaTree.so")
 library(tgp)
 
 ## describing the (x,y) data
@@ -19,11 +20,11 @@ y <- f1d(X)
 
 ## size of predictive grid and type of AS
 ngrid <- 100
-method <- "alm" ## also try "alc" or "ei"
+method <- "alm" ## also try "alc", "ei", or "ieci"
 prec <- 0.1 ## for ei
 
 ## PL fit to initial data
-obj <- dynaTree(X=X, y=y, model="linear", minp=4)
+obj <- dynaTree(X=X, y=y, model="linear")
 
 ## determining the number of adaptive sampling rounds
 end <- 100
@@ -34,19 +35,21 @@ end <- 100
 
 track <- NULL
 
-## pdf(paste("pics.pdf",sep=""), width=4, height=6)
 for(t in start:end){
 
   ## random predictive grid
   XX <- lhs(ngrid, rect)
 
   ## predict arguments
-  alc <- ei <- FALSE
-  if(method == "alc") alc <- TRUE
-  else if(method == "ei") ei <- TRUE
+  ieci <- alc <- ei <- FALSE
+  if(method == "alc") { alc <- TRUE
+  } else if(method == "ei") { ei <- TRUE 
+  } else if(method == "ieci") ieci <- TRUE
   
   ## predict at the XX locations
-  obj <- predict(obj, XX, quants=FALSE, alc=alc, ei=ei)
+  obj <- predict(obj, XX, quants=FALSE, ei=ei)
+  if(alc) { obj <- alc(obj, XX, rect=rect)
+  } else if(ieci) obj <- ieci(obj, XX)
 
   ## extract via ALM, ALC, EI-prec
   al <- alcalc(obj, method, prec)

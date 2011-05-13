@@ -16,6 +16,7 @@ plot.dynaTree <-
     ## check proj
     if(length(proj) != 1 || proj <= 0 || proj > ncol(x$X))
       stop("bad proj")
+    if(x$icept == "augmented") proj <- proj + 1
     
     ## extract projected X and XX
     X <- x$X[,proj]; XX <- x$XX[,proj]
@@ -34,20 +35,20 @@ plot.dynaTree <-
 
     ## plot a single set of (3) lines
     if(is.null(x$R)) {
-      lines(XX[o], x$mean[o], col=col)
+      lines(XX[o], x$mean[o], col=col, lwd=lwd)
       if(!is.null(x$q1)) {
-        lines(XX[o], x$q1[o], col=col, lty=2)
-        lines(XX[o], x$q2[o], col=col, lty=2)
+        lines(XX[o], x$q1[o], col=col, lty=2, lwd=lwd)
+        lines(XX[o], x$q2[o], col=col, lty=2, lwd=lwd)
       }
     } else { ## or plot R sets
 
       if(ptype == "each") {
         ## plotting each pair of lines
         for(r in 1:x$R) {
-          lines(XX[o], x$mean[o,r], col=col)
+          lines(XX[o], x$mean[o,r], col=col, lwd=lwd)
           if(!is.null(x$q1)) {
-            lines(XX[o], x$q1[o,r], col=col, lty=2)
-            lines(XX[o], x$q2[o,r], col=col, lty=2)
+            lines(XX[o], x$q1[o,r], col=col, lty=2, lwd=lwd)
+            lines(XX[o], x$q2[o,r], col=col, lty=2, lwd=lwd)
           }
         }
       } else if(ptype == "mean") {
@@ -106,7 +107,7 @@ plotprogress <- function(x, xstar, ystar, method="alm",
 ## plot the active learning heuristic --
 ## ised nu plotprogress
 
-plotal <- function(x, method=c("alm", "alc", "ei"), prec=1,
+plotal <- function(x, method=c("alm", "alc", "ei", "ieci"), prec=1,
                    add=FALSE, each=FALSE, root=FALSE, ylim=NULL, ...)
   {
     ## complete the method argument

@@ -10,7 +10,7 @@ tree (regression) models for 1-d data -- provided primarily
 for use in our 1-d examples and for illustrative purposes
 }
 \usage{
-\method{plot}{dynaTree}(x, proj = 1, add = FALSE,ylim = NULL,
+\method{plot}{dynaTree}(x, proj = 1, add = FALSE, ylim = NULL,
               col = 2, lwd = 1, ptype = c("each", "mean"), ...)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -59,13 +59,14 @@ for use in our 1-d examples and for illustrative purposes
 The only output of this function is a pretty plot
 }
 \references{
-  Taddy, M.A., Gramacy, R.B., and Polson, N. (2009).
+ Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
   \dQuote{Dynamic trees for learning and design}
-  Tech. Rep. arXiv:0912.1636, University of Cambridge.
+  Journal of the American Statistical Association, 106(493), pp. 109-123;
+  arXiv:0912.1636
 
-  \url{http://www.statslab.cam.ac.uk/~bobby/dynaTree.html}}
+  \url{http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html}}
 \author{
-Robert B. Gramacy \email{bobby@statslab.cam.ac.uk} and\cr
+Robert B. Gramacy \email{rbgramacy@chicagobooth.edu} and\cr
 Matt Taddy \email{taddy@chicagobooth.edu}}
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~

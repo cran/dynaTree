@@ -18,7 +18,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301  USA
  *
- * Questions? Contact Robert B. Gramacy (bobby@statslab.cam.ac.uk)
+ * Questions? Contact Robert B. Gramacy (rbgramacy@chicagobooth.edu)
  *
  ****************************************************************************/
 
@@ -26,7 +26,6 @@
 extern "C" {
 #include "rhelp.h"
 #include "R.h"
-#include "Rmath.h"
 #include "matrix.h"
 }
 #include "cloud.h"
@@ -38,9 +37,6 @@ unsigned int NC = 0;
 Cloud **clouds = NULL;
 
 unsigned int get_cloud(void);
-double EI(const double m, const double s2, const double df,
-	const double fmin);
-
 
 /*
  * dynaTree_R:
@@ -66,7 +62,6 @@ void dynaTree_R(/* inputs */
 		double *lpred_out,
 		int *c_out) 
 { 
-  
   GetRNGstate();
 
   /* training data */
@@ -81,7 +76,7 @@ void dynaTree_R(/* inputs */
   unsigned int verb = *verb_in;
 
   /* minimum parition size */
-  unsigned int minp = (int) params_in[2];
+  unsigned int minp = (int) params_in[4];
 
   /* choose starting indices and bounding rectangle */
   unsigned int nstart = minp; // no possible splits until 2*minp
@@ -123,6 +118,82 @@ void dynaTree_R(/* inputs */
 
 
 /*
+ * rejuvinate_R:
+ *
+ * create a new particle cloud from an old pall object,
+ * obtained from a different cloud -- and then combine
+ * the particle clouds
+ */
+
+void rejuvinate_R(/* inputs */
+		int* c_in,
+		int *o_in,
+		int *n_in,
+		int *verb_in,
+		
+		/* outputs */
+		double *lpred_out)
+{ 
+  GetRNGstate();
+
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+
+  /* info from pall */
+  unsigned int minp = cloud->pall->minp;
+  unsigned int T = cloud->pall->n;
+
+  /* sanity check */
+  if(*n_in > 0) assert(*n_in == (int) T);
+  else assert(!o_in);
+
+  /* reorder the indices in the cloud */
+  if(o_in) cloud->Reorder(o_in);
+
+  /* choose starting indices and bounding rectangle */
+  unsigned int nstart = minp; // no possible splits until 2*minp
+  if(nstart >= T) nstart = T-1;
+  int *pstart = iseq(0,nstart-1);
+  
+  /* print something? */
+  if(*verb_in > 0) myprintf(stdout, "rejuvinating\n");
+
+  /* allocate a new particle cloud */
+  Cloud *newcloud = new Cloud(cloud->Nrevert, cloud->pall, pstart, nstart);
+  free(pstart);
+  
+  /* initialize marginal likelihood */
+  zerov(lpred_out, T);
+  
+  /* Particle Learning steps for each new data point */
+  for(unsigned int t=nstart; t<T; t++){
+
+    /* PL Resample step, and gathering of cloud summaries */
+    double logpost = newcloud->Resample(t, *verb_in);
+
+    /* trace marginal likelihood */
+    lpred_out[t] = logpost;
+  
+    /* PL propagate step */
+    newcloud->Propagate(t);
+  } 
+
+  /* combine particle clouds; also deletes newcloud */
+  cloud->Combine(newcloud);
+  newcloud = NULL;
+
+  /* print something */
+  if(*verb_in > 0) myprintf(stdout, "now %d particles\n", cloud->N);
+
+  /* return to R */
+  PutRNGstate();
+}
+
+
+/*
  * update_R:
  *
  * add (x,y) pairs to the data and update the particle
@@ -141,7 +212,6 @@ void update_R(/* inputs */
 	      /* outputs */
 	      double *lpred_out)
 { 
-  
   GetRNGstate();
 
   /* get the cloud */
@@ -188,17 +258,51 @@ void update_R(/* inputs */
 
 
 /*
+ * retire_R:
+ *
+ * R-interface to a routine that removes the input/output
+ * pairs corresponding to a certain indices, moving the info
+ * to the prior to the extent possible
+ */
+
+void retire_R(/* inputs */
+	     int *c_in,
+	     int *pretire_in,
+	     int *nretire_in,
+	     double *lambda_in,
+	     int *verb_in,
+	     double *X_out,
+	     double *y_out)
+{
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+
+  /* remove from pall and each cloud; causes changes in
+     pall->X and pall->y */
+  cloud->Retire(pretire_in, *nretire_in, *lambda_in, *verb_in);
+
+  /* write out the new X matrix and y vector */
+  dupv(X_out, cloud->pall->X[0], cloud->pall->n * cloud->pall->m);
+  dupv(y_out, cloud->pall->y, cloud->pall->n);
+}
+
+
+/*
  * predict_R:
  *
  * function to predict at new XX locations based on 
  * the c-th particle cloud; returns the particle average
  * moments of the (student-t) predictive distribution 
- * and its quantiles
+ * and its quantiles, and expected improvement (EI) stats
+ * if desired
  */
 
 void predict_R(/* inputs */
 	       int *c_in,
 	       double *XX_in,
+	       double *yy_in,
 	       int *nn_in,
 	       int *verb_in,
 	       
@@ -207,15 +311,15 @@ void predict_R(/* inputs */
 	       double *var_out,
 	       double *q1_out,
 	       double *q2_out,
-	       double *alc_out,
+	       double *yypred_out,
 	       double *ei_out)
 {
   /* get the cloud */
   unsigned int c = *c_in;
-  if(clouds[c] == NULL) error("cloud %d is not allocated\n", c);
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
-  unsigned int N = cloud->N;
 
   /* verbosity argument */
   unsigned int verb = *verb_in;
@@ -224,69 +328,200 @@ void predict_R(/* inputs */
    the posterior predictive distribution */
   unsigned int nn = (unsigned int) *nn_in;
   double **XX = new_matrix_bones(XX_in, nn, m);
-  double **mean = new_zero_matrix(N, nn);
-  double **var = new_zero_matrix(N, nn);
-
-  /* quantiles might not be required */
-  double **q1, **q2;
-  if(q1_out) {
-    q1 = new_zero_matrix(N, nn);
-    q2 = new_zero_matrix(N, nn);
-  } else q1 = q2 = NULL;
-
-  /* EI calculations might not be required */
-  double **sd, **df;
-  if(ei_out) {
-    sd = new_zero_matrix(N, nn);
-    df = new_zero_matrix(N, nn);
-  } else sd = df = NULL;
 
   /* predict at the XX locations for each particle */
-  cloud->Predict(XX, nn, mean, sd, df, var, q1, q2, verb);
-
-  /* average means of particles */
-  wmean_of_columns(mean_out, mean, N, nn, NULL);
-  
-  /* average variance plus variances of means */
-  wmean_of_columns(var_out, var, N, nn, NULL);
-  double *temp = new_vector(nn);
-  wvar_of_columns(temp, mean, N, nn, NULL);
-  for(unsigned int i=0; i<nn; i++) var_out[i] += temp[i];
-  free(temp);
-  delete_matrix(var);
-  
-  /* average quantiles of particles */
-  if(q1_out) {
-    wmean_of_columns(q1_out, q1, N, nn, NULL);
-    wmean_of_columns(q2_out, q2, N, nn, NULL);
-    delete_matrix(q1);
-    delete_matrix(q2);
-  }
-    
-  /* calculate EI if required */
-  if(ei_out) {
-    zerov(ei_out, nn);
-    unsigned int which; double fmin;
-    // fmin = min(mean_out, nn, &which);
-    for(unsigned int i=0; i<N; i++) {
-      fmin = min(mean[i], nn, &which);
-      for(unsigned int j=0; j<nn; j++) {
-	ei_out[j] += EI(mean[i][j], sd[i][j], df[i][j], fmin);
-      }
-    }
-    scalev(ei_out, nn, 1.0/N);
-
-    /* clean up */
-    delete_matrix(sd);
-    delete_matrix(df);
-  }
-  delete_matrix(mean);
-
-  /* deal with ALC */
-  if(alc_out) cloud->ALC(XX, nn, alc_out, verb);
+  cloud->Predict(XX, yy_in, nn, mean_out, var_out, q1_out, 
+		 q2_out, yypred_out, ei_out, verb);
 
   /* free predictive data */
   free(XX);
+}
+
+
+/*
+ * alc_R:
+ *
+ * function to calculate ALC at new XX locations, over 
+ * reference locations Xref, or a rectangle in Xref,
+ *  based on the c-th particle cloud
+ */
+
+void alc_R(/* inputs */
+	   int *c_in,
+	   double *XX_in,
+	   int *nn_in,
+	   double *Xref_in,
+	   int *nref_in,
+	   double *probs_in,
+	   int *verb_in,
+	       
+	   /* outputs */
+	   double *alc_out)
+{
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+  unsigned int m = cloud->pall->m;
+
+  /* verbosity argument */
+  unsigned int verb = *verb_in;
+
+  /* data and storage for samples from
+   the posterior predictive distribution */
+  unsigned int nn = (unsigned int) *nn_in;
+  double **XX = new_matrix_bones(XX_in, nn, m);
+  double **probs = NULL;
+  if(probs_in) probs = new_matrix_bones(probs_in, cloud->N, *nref_in);
+
+  /* reference locations or rectangle for ALC */
+  double **Xref = NULL;
+  double **rect = NULL;
+  if(*nref_in > 0) { /* ALC by new reference locations */
+    assert(Xref_in);
+    Xref = new_matrix_bones(Xref_in, *nref_in, m);
+  } else if(*nref_in == -1) /* ALC by rectangle */
+    rect = new_matrix_bones(Xref_in, 2, m);
+  else assert(Xref_in == NULL);
+
+  /* deal with ALC */
+  assert(alc_out);
+  if(Xref) cloud->ALC(XX, nn, Xref, *nref_in, probs, alc_out, verb);
+  else if(rect) cloud->ALC(XX, nn, rect, alc_out, verb);
+  else cloud->ALC(XX, nn, XX, nn, probs, alc_out, verb);
+
+  /* clean up ALC predictive data */
+  if(Xref) free(Xref);
+  if(rect) free(rect);
+  if(probs) free(probs);
+  free(XX);
+}
+
+
+/*
+ * ieci_R:
+ *
+ * function to calculate IECI at new XX locations, over 
+ * reference locations Xref (or XX if not specified)
+ * based on the c-th particle cloud
+ */
+
+void ieci_R(/* inputs */
+	   int *c_in,
+	   double *XX_in,
+	   int *nn_in,
+	   double *Xref_in,
+	   int *nref_in,
+	   double *probs_in,
+	   int *verb_in,
+	       
+	   /* outputs */
+	   double *ieci_out)
+{
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+  unsigned int m = cloud->pall->m;
+
+  /* verbosity argument */
+  unsigned int verb = *verb_in;
+
+  /* data and storage for samples from
+   the posterior predictive distribution */
+  unsigned int nn = (unsigned int) *nn_in;
+  double **XX = new_matrix_bones(XX_in, nn, m);
+  double **probs = NULL;
+  if(probs_in) probs = new_matrix_bones(probs_in, cloud->N, *nref_in);
+
+  /* explicit reference locations or use XX? */
+  double **Xref = NULL;
+  if(*nref_in > 0) { /* ALC by new reference locations */
+    assert(Xref_in);
+    Xref = new_matrix_bones(Xref_in, *nref_in, m);
+  } else assert(Xref_in == NULL);
+
+  /* deal with IECI */
+  assert(ieci_out);
+  if(Xref) cloud->IECI(XX, nn, Xref, *nref_in, probs, ieci_out, verb);
+  else cloud->IECI(XX, nn, XX, nn, probs, ieci_out, verb);
+
+  /* clean up ALC predictive data */
+  if(Xref) free(Xref);
+  if(probs) free(probs);
+  free(XX);
+}
+
+
+/*
+ * alcX_R:
+ *
+ * function to calculate the ALC statistic at the
+ * data locations by integrating over a bounding rectangle
+ * 
+ */
+
+void alcX_R(/* inputs */
+	       int *c_in,
+	       double *rect_in,
+	       int *verb_in,
+	       
+ 	       /* outputs */
+	       double *alc_out)
+{
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+  unsigned int m = cloud->pall->m;
+
+  /* verbosity argument */
+  unsigned int verb = *verb_in;
+
+  assert(rect_in);
+  double ** rect = new_matrix_bones(rect_in, 2, m);
+  assert(alc_out != NULL);
+
+  /* calculate ALC */
+  cloud->ALC(rect, alc_out, verb);
+
+  /* free data */
+  free(rect);
+}
+
+
+/*
+ * entropyX_R:
+ *
+ * function to calculate the Entropy statistics at the
+ * data locations 
+ * 
+ */
+
+void entropyX_R(/* inputs */
+	       int *c_in,
+	       int *verb_in,
+	       
+ 	       /* outputs */
+	       double *entropy_out)
+{
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+
+  /* verbosity argument */
+  unsigned int verb = *verb_in;
+
+  /* sanity check */
+  assert(entropy_out != NULL);
+
+  /* calculate ALC */
+  cloud->Entropy(entropy_out, verb);
 }
 
 
@@ -301,11 +536,13 @@ void predict_R(/* inputs */
 void predclass_R(/* inputs */
 		 int *c_in,
 		 double *XX_in,
+		 int *yy_in,
 		 int *nn_in,
 		 int *verb_in,
 		 
 		 /* outputs */
 		 double *p_out,
+		 double *yypred_out,
 		 double *entropy_out)
 {
   /* get the cloud */
@@ -314,7 +551,6 @@ void predclass_R(/* inputs */
     error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
-  unsigned int N = cloud->N;
   unsigned int nc = cloud->pall->nc;
   assert(nc > 0);
 
@@ -324,25 +560,10 @@ void predclass_R(/* inputs */
   /* matrix pointer for XX */
   unsigned int nn = (unsigned int) *nn_in;
   double **XX = new_matrix_bones(XX_in, nn, m);
-
-  /* data and storage for samples from
-     the posterior predictive distribution */
-  double ***p = (double***) malloc(sizeof(double **) *nc);
-  for(unsigned int i=0; i<nc; i++) {
-    p[i] = new_zero_matrix(N, nn);
-  }
-  double **entropy = new_zero_matrix(N, nn);
+  double **p = new_matrix_bones(p_out, nc, nn);
 
   /* predict at the XX locations for each particle */
-  cloud->Predict(XX, nn, p, entropy, verb);
-
-  /* average, write out, and delete */
-  for(unsigned int i=0; i<nc; i++) {
-    wmean_of_columns(p_out + nn*i, p[i], N, nn, NULL);
-    delete_matrix(p[i]);
-  }
-  wmean_of_columns(entropy_out, entropy, N, nn, NULL);
-  delete_matrix(entropy);
+  cloud->Predict(XX, yy_in, nn, p, yypred_out, entropy_out, verb);
 
   /* clean up p */
   free(p);
@@ -351,28 +572,194 @@ void predclass_R(/* inputs */
 
 
 /*
- * EI:
+ * classprobs_R:
  *
- * calculates the expected improvement following
- * Williams et al by integrating over the parameters
- * to the GP predictive
+ * return the particle probabilities of a particular
+ * a particle class -- a sample from the posterior 
+ * distribution
  */
 
-double EI(const double m, const double s2, const double df,
-          const double fmin)
+void classprobs_R(/* inputs */
+		  int *c_in,
+		  int *class_in,
+		  double *XX_in,
+		  int *nn_in,
+		  int *verb_in,
+		  
+		  /* outputs */
+		  double *p_out,
+		  double *cs_out)
 {
-  double diff, sd, diffs, scale, ei;
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+  unsigned int m = cloud->pall->m;
+  unsigned int nc = cloud->pall->nc;
+  unsigned int cl = *class_in;
+  assert(cl < nc);
 
-  diff = fmin - m;
-  sd = sqrt(s2);
-  diffs = diff/sd;
-  scale = (df*sd + sq(diff)/sd)/(df-1.0);
-  ei = diff*pt(diffs, (double) df, 1, 0);
-  ei += scale*dt(diffs, (double) df, 0);
+  /* verbosity argument */
+  unsigned int verb = *verb_in;
 
-  return(ei);
+  /* matrix pointer for XX */
+  unsigned int nn = (unsigned int) *nn_in;
+  double **XX = new_matrix_bones(XX_in, nn, m);
+
+  /* matrix pointers for outputs */
+  double **p,  **cs;
+  p = cs = NULL;
+  if(p_out) p = new_matrix_bones(p_out, cloud->N, nn);
+  if(cs_out) cs = new_matrix_bones(cs_out, cloud->N, nn);
+
+  /* predict at the XX locations for each particle */
+  cloud->Predict(cl, XX, nn, p, cs, verb);
+
+  /* clean up p */
+  if(p) free(p);
+  if(cs) free(cs);
+  free(XX);
 }
 
+
+/*
+ * sens_R:
+ *
+ * function to to calculate sensitivity indices for
+ * the c-th particle cloud; returns main mean effects and
+ * quantiles, along with S and calculations
+ */
+
+void sens_R(/* inputs */
+	    int *c_in,
+	    int *class_in,
+	    int *nns_in,
+	    int *aug_in,
+	    double *rect_in,
+	    double *shape_in,
+	    double *mode_in,
+	    int *cat_in,
+	    int *ngrid_in,
+	    double *span_in,
+	    double *Xgrid_t_in,
+	    int *verb_in,
+	    
+	    /* outputs */
+	    double *mean_out,
+	    double *q1_out,
+	    double *q2_out,
+	    double *S_out,
+	    double *T_out)
+{
+  GetRNGstate();
+
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+  unsigned int m = cloud->pall->m;
+  unsigned int aug = (unsigned) *aug_in;
+  if(cloud->pall->model != LINEAR) assert(aug == 0);
+  unsigned int N = cloud->N;
+
+  /* verbosity argument */
+  unsigned int verb = *verb_in;
+  
+  /* extract stuff to do with the latin hypercube */
+  unsigned int nns = (unsigned int) *nns_in;
+  double **rect = NULL;  /* indicates boot method instead */
+  if(rect_in) rect = new_matrix_bones(rect_in, 2, m-aug);
+  else assert(shape_in == NULL && mode_in == NULL);
+
+  /* storage for samples from the mean effects distribution */
+  unsigned int ngrid = (unsigned int) *ngrid_in;
+  double **Xgrid_t = new_matrix_bones(Xgrid_t_in, m, ngrid);
+  double **mean = new_matrix_bones(mean_out, m, ngrid);
+  double **q1 = new_matrix_bones(q1_out, m-aug, ngrid);
+  double **q2 = new_matrix_bones(q2_out, m-aug, ngrid);
+
+  /* storage for the samples of the sensitivity indices */
+  double **S = new_matrix_bones(S_out, N, m-aug);
+  double **T = new_matrix_bones(T_out, N, m-aug);
+
+  /* sensitivity calculations for each particle */
+  cloud->Sens(class_in, nns, aug, rect, shape_in, mode_in, cat_in,
+	      Xgrid_t, ngrid, *span_in, mean, q1, q2, S, T, verb);
+
+  /* free bones */
+  free(rect);
+  free(Xgrid_t); free(mean); free(q1); free(q2);
+  free(S); free(T);
+
+  PutRNGstate();
+}
+
+
+/*
+ * varpropuse_R:
+ *
+ * function to tally the number of particles that 
+ * use a variable as a split location
+ */
+
+void varpropuse_R(int *c_in, double* props_out)
+{
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+
+  /* call the varcount function for clounds */
+  cloud->VarPropUse(props_out);
+}
+
+
+/*
+ * varproptotal_R:
+ *
+ * function to tally the number of particles that 
+ * use a variable as a split location
+ */
+
+void varproptotal_R(int *c_in, double* props_out)
+{
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+
+  /* call the varcount function for clounds */
+  cloud->VarPropTotal(props_out);
+}
+
+
+/*
+ * copy_cloud_R:
+ *
+ * function to copy a cloud in memory into a 
+ * newly allocated cloud reference
+ */
+
+  void copy_cloud_R(int *c_in, int *c_out)
+{
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+
+  /* get a new cloud index */
+  unsigned int cnew = get_cloud();
+  
+  /* allocate a new particle cloud */
+  clouds[cnew] = new Cloud(cloud);
+
+  /* return to R */
+  *c_out = (int) cnew;
+}
 
 
 /*
@@ -458,8 +845,9 @@ void delete_clouds(void)
  */
 
 void delete_clouds_R(void)
-{
-  delete_clouds();
+{ 
+  if(clouds)
+    delete_clouds();
 }
 
 

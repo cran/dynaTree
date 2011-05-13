@@ -24,7 +24,7 @@ X <- dopt.gp(end, Xcand=XX)$XX
 C <- exp2d.C(X)
 
 ## now compare to repetition on a fixed design
-objR <- dynaTrees(X, C, XX=XX, model="class")
+objR <- dynaTrees(X, C, XX=XX, model="class", yy=CC)
 
 ## plotting colors and grid
 cols <- c(gray(0.85), gray(0.625), gray(0.4))

@@ -26,28 +26,38 @@
 #ifndef __PALL_H__
 #define __PALL_H__ 
 
-#define LURECT 1
-
 /* types of models supported */
 typedef enum Model {CONSTANT=1001, LINEAR=1002, CLASS=1003} Model;
+typedef enum RProp {LUALL=1001, LUVAR=1002, REJECT=1003} RProp;
 
 typedef struct pall {
-  double **X;              /* input matrix */
-  double *y;               /* outputs or class labels */
+  double **X;              /* input matrix n x m */
+  double *y;               /* n-vector of outputs or class labels */
   unsigned int n;          /* number of (x,y) pairs */
+  unsigned int g;          /* number of retired inputs */
   unsigned int m;          /* number of predictors; cols of X */
   unsigned int nc;         /* number of class labels */
+  double nu0;              /* variance prior sample size */
+  double s20;              /* prior variance estimate */
   double a;                /* tree prior alpha parameter */
   double b;                /* tree prior beta parameter */
   unsigned int smin;       /* tree prior splitmin index for linear models */
   unsigned int bmax;       /* tree prior basemax index for linear models */
-  double minp;             /* tree prior min-part parameter */
+  double *bmaxv;           /* temporary vector of length bmax */
+  unsigned int icept;      /* Boolean intercept indicator for linear models */
+  unsigned int minp;       /* tree prior min-part parameter */
   Model model;             /* model indicator */
+  RProp rprop;             /* grow rectangle proposal inticator */
 } Pall;
 
 Pall *new_pall(double **X, unsigned int n, unsigned int m, 
 	       double *y, double *params, int model);
+Pall *copy_pall(Pall *pold);
 void add_data(Pall *data, double **X, unsigned int n, double *y);
+void retire(Pall *data, unsigned int index);
 void delete_pall(Pall *data);
+void reorder(Pall *pall, int *o);
+double EI(const double m, const double sd, const double df,
+	const double fmin);
 
 #endif

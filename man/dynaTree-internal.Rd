@@ -5,6 +5,10 @@
 \alias{plotprogress}
 \alias{plotal}
 \alias{alcalc}
+%%% THINGS THAT DO NEED TO BE DOCUMENTED EVENTUALLY
+\alias{classprobs.dynaTree}
+\alias{ieci.dynaTree}
+\alias{rejuvinate.dynaTree}
 \title{Internal dynaTree Functions}
 \description{
   Internal \pkg{dynaTree} functions

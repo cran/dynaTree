@@ -11,11 +11,16 @@ Monte Carlo (SMC) method of particle learning (PL)
 }
 \usage{
 dynaTree(X, y, N = 1000, model = c("constant", "linear", "class"),
-         ab = c(0.95, 2), minp = NULL, sb = NULL, verb = 10)
+         nu0s20 = c(0,0), ab = c(0.95, 2), minp = NULL, sb = NULL, 
+	 icept = c("implicit", "augmented", "none"), 
+         rprop = c("luvar", "luall", "reject"), verb = round(length(y)/10))
 dynaTrees(X, y, N = 1000,  R = 10,
-          model = c("constant", "linear", "class"),
-          ab=c(0.95, 2), minp = NULL, sb = NULL, XX = NULL,
-          plotit = FALSE, proj = 1, rorder = TRUE, verb = 10, ...)
+          model = c("constant", "linear", "class"), nu0s20 = c(0,0),
+          ab=c(0.95, 2), minp = NULL, sb = NULL, 
+          icept =  c("implicit", "augmented", "none"),
+          rprop = c("luvar", "luall", "reject"), XX = NULL, yy = NULL,
+	  varprop = FALSE,  plotit = FALSE, proj = 1, rorder = TRUE, 
+	  verb = round(length(y)/10),  pverb=round(N/10), ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -41,11 +46,18 @@ dynaTrees(X, y, N = 1000,  R = 10,
     \code{"constant"} and \code{"linear"} apply to regression,
     and \code{"class"} to multinomial classification
 }
-  \item{ab}{
-    tree prior parameter \code{c(alpha, beta)}; see details below
+ \item{nu0s20}{
+   a two-vector indicating Inverse Gamma prior parameters
+   \code{c(nu0, sigma20)} for the vairiance in each leaf node,
+   \eqn{\sigma^2}{sigma2}.  A \code{c(0,0)} setting indicates 
+   a default, scale-invariant, prior; does not apply to the
+   \code{"class"} model 
+}
+\item{ab}{
+   tree prior parameter \code{c(alpha, beta)}; see details below
 }
 \item{minp}{
-    A positive scalar integer describing the smallest allowable
+    a positive scalar integer describing the smallest allowable
     region in the treed partition; if \code{NULL} (default) a
     suitable minimum is calculated based on \code{dim(X)} and
     the type of \code{model} being fit
@@ -58,11 +70,32 @@ dynaTrees(X, y, N = 1000,  R = 10,
     column of \code{X} to use as covariates in the linear model
     at the leaves, respectively
   }
+  \item{icept}{
+    indicates the type of intertecpt term used (only applies to
+    \code{model="linear"}).  The default, \code{"implicit"} 
+    causes the inputs \code{X} to be centered so the intercept can be
+    implied as an afterthought; \code{"augmented"} causes the inputs 
+    \code{X} to automatically gain a leading column of ones in a way
+    that is trasparent to the user; and \code{"none"} assumes that
+    no intercept is being used, or that the user has pre-treated
+    \code{X} to have a column of ones
+  }
   \item{XX}{
-    a design matrix of predictive locations (where \code{ncol(XX) ==
-      ncol(X)} for \code{dynaTrees}; also see
+    a design \code{matrix} of predictive locations (where \code{ncol(XX) ==
+      ncol(X)}) for \code{dynaTrees}; also see
     \code{\link{predict.dynaTree}} and some explanation in the
     details below
+  } 	 
+  \item{yy}{
+  an optional vector of \dQuote{true} responses at the \code{XX}
+  predictive locations at which the log posterior probability are
+  to be reported
+  }  	 
+  \item{varprop}{
+  if \code{TRUE} causes the \code{\link{varpropuse}} and
+  \code{\link{varproptotal}} functions to be called on after each
+  repetition to collect the usage proportions of each input variable
+ (column of \code{X}); see those documentation files for more details
 }
   \item{plotit}{
     a scalar \code{logical} indicating if the fit should be plotted
@@ -84,11 +117,30 @@ dynaTrees(X, y, N = 1000,  R = 10,
     one can specify an \code{nrow(X)}-by-\code{(R-1)} matrix
     of orderings (permutations of \code{1:nrow(X)})
 }
+\item{rprop}{
+    indicates the scheme used to construct a grow proposal.
+    The best setting, \code{"luall"} uses the lower (L) and upper (U)
+    rectangle method based on \code{minp} (above) as described 
+    in the seminal refence in which
+    the growing location and dimension is sampled uniformly.  It can
+    be computationally intensive for large input spaces.  A thriftier
+    option (the default) in this case is \code{"luvar"} which uniformly chooses the
+    splitting variable first and then uses the LU method marginally.
+    Thriftier still is \code{"reject"} which just proposes uniformly
+    in the bounding leaf rectangle and rejects subsequent grows that
+    lead to partitions with too few data points; (see the \code{minp}
+    argument)
+}
 \item{verb}{
-    a positive scalar integer indicating how many time steps
-    (iterations) should pass before a progress statement is
-    printed to the console; a value of \code{verb = 0} is quiet
-  }
+   a positive scalar integer indicating how many time steps
+   (iterations) should pass before a progress statement is
+   printed to the console; a value of \code{verb = 0} is quiet
+ }
+\item{pverb}{
+   a positive scalar integer indicating after many particles
+   should be processed for prediction before a progress statement is
+   printed to the console; a value of \code{verb = 0} is quiet
+ }
   \item{\dots}{
     extra arguments to \code{\link{predict.dynaTree}} passed
     from \code{dynaTrees}
@@ -135,6 +187,7 @@ dynaTrees(X, y, N = 1000,  R = 10,
 
   \item{m }{ \code{ncol(X)} } 
   \item{T }{ \code{nrow(X)} }
+  \item{N }{ the number of particles used }
   \item{X }{ a copy of the design matrix \code{X} }
   \item{y }{ a copy of the responses \code{y} }
   \item{model}{ a copy of the specified leaf model }
@@ -144,26 +197,38 @@ dynaTrees(X, y, N = 1000,  R = 10,
     for of each observation, conditional on the ones previous,
     for all time \code{(2*minp):T}; see \code{getBF} for calculating
   Bayes factors from these}
+  \item{icept}{ a copy of the intercept argument }
   \item{time }{ the total computing time used to build the
     particle cloud}
   \item{num }{ a \dQuote{pointer} to the \code{C}-side particle
     cloud; see the note below }
-      
-  The \code{dynaTrees} function also does prediction (via
+
+  -\cr
+  The \code{dynaTrees} function can obtain predictive samples (via
   \code{\link{predict.dynaTree}}) at each of the \code{R} repeats.
   Therefore, the \code{"dynaTree"} object returned contains
   extra fields collecting these predictive samples, primarily
   comprising of \code{R} columns of information for each
   of the fields returned by  \code{\link{predict.dynaTree}};
-  see that function for more details.  The \code{dynaTrees}
-  function does not return \code{num} since it does not leave
-  any allocated particle clouds on the \code{C}-side
+  see that function for more details.  Likewise, when \code{varprop =
+  TRUE} the returned object also contains \code{vpu} and \code{vpt}
+  fields whose columns contain the \code{\link{varpropuse}} and
+  \code{\link{varproptotal}} outputs.
+
+  Likewise, \code{dynaTrees}, can provide variable usage summaries
+  if \code{varprop = TRUE}, in which case the output includes
+  \code{vpu} and \code{vpt} fields; See \code{\link{varpropuse}}
+  and \code{\link{varproptotal}} for more details
+
+  The \code{dynaTrees} function does not return \code{num} since 
+  it does not leave  any allocated particle clouds on the \code{C}-side
 }
 \references{
    
-  Taddy, M.A., Gramacy, R.B., and Polson, N. (2009).
+ Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
   \dQuote{Dynamic trees for learning and design}
-  Tech. Rep. arXiv:0912.1636, University of Cambridge.
+  Journal of the American Statistical Association, 106(493), pp. 109-123;
+  arXiv:0912.1636
 
   Carvalho, C., Johannes, M., Lopes, H., and Polson, N. (2008).
   \dQuote{Particle Learning and Smoothing}.
@@ -179,11 +244,11 @@ dynaTrees(X, y, N = 1000,  R = 10,
   \emph{Bayesian treed models.}
   Machine Learning, \bold{48}, 303--324.
 
-  \url{http://www.statslab.cam.ac.uk/~bobby/dynaTree.html}
+  \url{http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html}
 
 }
 \author{
-  Robert B. Gramacy \email{bobby@statslab.cam.ac.uk} and\cr
+  Robert B. Gramacy \email{rbgramacy@chicagobooth.edu} and\cr
   Matt Taddy \email{taddy@chicagobooth.edu}
 }
 
@@ -203,6 +268,10 @@ dynaTrees(X, y, N = 1000,  R = 10,
 
   The \code{C}-side memory cannot be saved in the workspace,
   so they cannot persist across \code{R} sessions
+
+  To copy a \code{"dynaTree"}-class object, use
+  \code{\link{copy.dynaTree}}, which will also copy the \code{C}-side
+  memory allocated to the object
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
@@ -210,7 +279,8 @@ dynaTrees(X, y, N = 1000,  R = 10,
 \seealso{
   \code{\link{predict.dynaTree}}, \code{\link{update.dynaTree}},
   \code{\link{plot.dynaTree}}, \code{\link{deletecloud}},
-  \code{\link{getBF}}
+  \code{\link{copy.dynaTree}}, \code{\link{getBF}}, 
+  \code{\link{varpropuse}}, \code{\link{varproptotal}}
 }
 \examples{
 ## simple parabolic data
@@ -226,8 +296,14 @@ parab.fit <- dynaTree(Xp, Yp, model="linear")
 parab.fit <- predict(parab.fit, XX=seq(-3, 3, length=100))
 plot(parab.fit)
 
+## try duplicating the object
+parab.fit.copy <- copy(parab.fit)
+
 ## must delete the cloud or memory may leak
 deletecloud(parab.fit); parab.fit$num <- NULL
+
+## to delete all clouds, do:
+deleteclouds()
 
 ## for more examples of dynaTree see update.dynaTree
 

@@ -32,33 +32,47 @@ extern "C" {
 #include "matrix.h"
 }
 
+class Particle;
+
 class Tree
 {
  private: 
   
-  /* prior parameter settings */
-  double as2;                  
-  double bs2;
+  /* pointer to particle this tree lives in */
+  Particle *particle;
 
   /* data */
   unsigned int n;               /* size of data in current parition */
-  int *p;			/* n, indices into original data */
+  int *p;			/* n-vector of indices into original data */
+  double *al;                   /* n-vector of stored active learning stats */
+  double ng;                    /* (drifting) number of retired observations */
 
   /* sufficient stats for the classification model */
   unsigned int *counts;         /* counts in each class */
 
+  /* retireed stats for the classification model */
+  double *gcounts;              /* (drifting) retired counts in each class */
   /* sufficient stats for constant model */
-  double mu;                    /* data mean */
-  double syy;                   /* sum of squared residuals (from mu)  */
+  double sy;                    /* data sum; n*ybar */
+  double syy;                   /* sum of y-squared  */
+
+  /* retired stats for constant model */
+  double syg;                   /* retireed ng*ybar */
+  double syyg;                  /* retireed sum of y-squared */
 
   /* extra sufficient stats for linear model */
-  double bb;                    /* t(bmu) %*% XtX bmu */
-  double mm;                    /* for mu adjustment */
-  double **XtXi;                /* solve(XtX) */
+  double **XtX;                 /* t(X) %*% X, NULL when icept = FALSE */
+  double *Xty;                  /* t(X) %*% y, NULL when icept = FALSE */
+  double **XtXi;                /* inv(XtX) */
   double ldet_XtXi;             /* log determiniant of XtXi */
-  double *bmu;                  /* mean of the beta posterior */
+  double *bmu;                  /* inv(t(X) %*% X) %*% t(X) %*% y */
+  double bb;                    /* t(bmu) %*% XtX %*% bmu */
   double *xmean;                /* mean of the cols of X */
 
+  /* extra retired stats for linear model; must have icept = FALSE */
+  double **XtXg;                 /* retireed t(X) %*% X */
+  double *Xtyg;                  /* retireed t(X) %*% y */
+  
   /* splits */
   int var;	                /* split point dimension */
   double val;		        /* split point value */
@@ -87,11 +101,9 @@ class Tree
 
  public:
 
-  Pall *pall;		        /* holding stuff common to all particles */
-  
   /* constructor, destructor and misc partition initialization */
-  Tree(Pall *pall, int *p, unsigned int n, Tree* parent_in);
-  Tree(const Tree *oldt, Tree *parent);
+  Tree(Particle *particle, int *p, unsigned int n, Tree* parent_in);
+  Tree(const Tree *oldt, Particle *particle, Tree *parent);
   ~Tree(void);
   void IEconomy(void);
   
@@ -130,32 +142,65 @@ class Tree
   double Prior(void);
   double FullPosterior(void);
   double Posterior(void);
+  double Regression(double *mean, double *s2numer, double *df, double *s2p_out);
   double PostPred(double *x, double y);
-  void Update(void);
-  void UpdateLinear(void);
-  double LinearAdjust(double *x, double *bmean, double *xtXtXix, double *y);
 
-  /* adding data to a leaf node */
+  /* calculating sufficient statistics for leaf nodes */
+  void Calc(void);
+  void CalcClass(void);
+  void CalcConst(void);
+  void CalcLinear(void);
+
+  /* adjustments for linear prediction */
+  double LinearAdjust(double *x, double *bmean, double *xtXtXix, 
+		      double *XtXix, double *y);
+
+  /* adding and retiring (moving to prior) data to a leaf node */
   Tree* AddDatum(unsigned int index);
+  Tree* RetireDatum(unsigned int index, double lambda);
+  void DecrementP(unsigned int oldi, unsigned int newi);
+
+  /* for rejuvination */
+  void ReorderP(int *o);
 
   /* collecting info from leaves to construct parents */
   int* GetP(unsigned int *n);
+  void AccumClass(unsigned int *counts, double *gcounts);
+  void AccumNg(double *ng);
+  void AccumConst(double *sy, double *syy, double *ng, double *syg, 
+		  double *syyg);
+  void AccumLinear(double **XtX, double *Xty, double **XtXg, double *Xtyg);
+  void AccumCalc(void);
 
   /* summary statistics */
   int leavesN(void);
   double leavesAvgSize(void);
+  double leavesAvgRetired(void);
   void Print(void);
+  unsigned int GetVar(void);
   
+  /* prior capping/forgetting factor for online learning */
+  void CapRetired(void);
+
   /* prediction and adaptive sampling */
-  void Predict(double *xx, double *mean, double *sd, double *df, 
-	       double *var, double *q1, double *q2);
+  void Predict(double *xx, double *mean, double *sd, double *df);
   double ALC(double *x, double *y);
+  double ALC(double *x, double **rect);
+  void ALC(double **rect, double *alc_out);
+  double ECI(double *x, double *y, double ymean, double ysd, 
+	     double fmin, double ei);
 
   /* prediction for classification */
   void Predict(double *x, double *pred);
+  void Predict(double *pred);
+  double Predict(double *x, unsigned int cls);
+  void Entropy(double *entropy_out);
 };
 
-/* calculating determinants */
+/* calculating subroutines */
+double calculate_linear(unsigned int m, double **XtX, double*Xty, 
+			double **XtXi, double *ldet_XtXi, double *bmu);
 double log_determinant_chol(double **M, const unsigned int n);
+double intdot2(unsigned int m, double c, double *y, double *a, double *b);
 
 #endif

@@ -39,7 +39,6 @@ class Cloud
 
   int *index;                  /* indices for re-sampling particles */
   double *prob;                /* probabilities for re-sampling */
-  unsigned int rsmin;          /* min number of re-sampled particles */
 
  protected:
 
@@ -49,10 +48,16 @@ class Cloud
 
   Pall *pall;                  /* data common to each particle */
   unsigned int N;              /* number of particles */
+  unsigned int Nrevert;        /* remember number of particles */
   
   /* constructor and destructor */
   Cloud(unsigned int N, Pall *pall, int *pstart, unsigned int nstart);
+  Cloud(Cloud *cold);
   ~Cloud(void);
+
+  /* rejuvination functions */
+  void Reorder(int *o);
+  void Combine(Cloud *c2);
 
   /* Particle Learning steps */
   double Resample(unsigned int t, unsigned int verb);
@@ -60,23 +65,44 @@ class Cloud
   double Posterior(void);
 
   /* prediction and sequential design */
-  void Predict(double **XX, unsigned int nn, double **mean,
-	       double **sd, double **df, double **var, double **q1, 
-	       double **q2, unsigned int verb);
-  void ALC(double **XX, unsigned int nn, double *alc_out, 
-		unsigned int verb);
+  void Predict(double **XX, double *yy, unsigned int nn, double *mean,
+	       double *var, double *q1, double *q2, double *yypred, 
+	       double *ei, unsigned int verb);
+  void IECI(double **XX, unsigned int nn, double **Xref, 
+	    unsigned int nref, double **probs, double *ieci_out, 
+	    unsigned int verb);
+  void ALC(double **XX, unsigned int nn, double **Xref, 
+	   unsigned int nref, double **probs, double *alc_out, 
+	   unsigned int verb);
+  void ALC(double **XX, unsigned int nn, double **rect, 
+	   double *alc_out, unsigned int verb);
+  void ALC(double **rect, double *alc_out, unsigned int verb);
+  void Sens(int *cls, unsigned int nns, unsigned int aug, 
+	    double **rect, double *shape, double *mode, int *cat,
+	    double **Xgrid, unsigned int ngrid, double span, 
+	    double **mean, double **q1, double **q2, 
+	    double **S, double **T, unsigned int verb);
+
+  /* retiring particles for online learning */
+  void Retire(int *pretire, unsigned int nretire, double lambda, 
+	      unsigned int verb);
+
+  /* variable selection */
+  void VarPropUse(double *counts);
+  void VarPropTotal(double *counts);
 
   /* prediction for classification */
-  void Predict(double **XX, unsigned int nn, double ***p,
-	       double **entropy, unsigned int verb);
-  /* access */
-  unsigned int GetRsmin(void);
-
+  void Predict(double **XX, int *yy, unsigned int nn, double **p,
+	       double *yypred, double *entropy, unsigned int verb);
+  void Predict(unsigned int cl, double **XX, unsigned int nn, double **p,
+	       double **c, unsigned int verb);
+  void Entropy(double *entropy_out, unsigned int verb);
 };
 
 
 /* utility functions for the ::Resample step */
 double norm_weights(double *v, int n);
-int indexsample(int *ind, int n, int num_probs, double *probs);
+void indexsample(int *ind, int n, int num_probs, double *probs);
+void ressample(int *ind, int n, int num_probs, double *probs);
 
 #endif

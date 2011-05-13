@@ -34,12 +34,15 @@ getBF(obj1, obj2)
   can be plotted; see examples below
 }
 \references{
-  Taddy, M.A., Gramacy, R.B., and Polson, N. (2009).
+ Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
   \dQuote{Dynamic trees for learning and design}
-  Tech. Rep. arXiv:0912.1636, University of Cambridge.
+  Journal of the American Statistical Association, 106(493), pp. 109-123;
+  arXiv:0912.1636
+
+  \url{http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html}
 }
 \author{
-Robert B. Gramacy \email{bobby@statslab.cam.ac.uk} and\cr
+Robert B. Gramacy \email{rbgramacy@chicagobooth.edu} and\cr
 Matt Taddy \email{taddy@chicagobooth.edu}
 }
 
