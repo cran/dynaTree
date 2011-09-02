@@ -238,6 +238,98 @@ void Tree::IEconomy(void)
 }
 
 
+/*
+ * goLeft:
+ *
+ * see if the index into X would go 
+ * to the left of the split
+ */
+
+bool Tree::goLeft(unsigned int index, bool always)
+{
+#ifdef DEBUG
+  assert(index < n);
+#endif
+  Pall *pall = particle->pall;
+
+  /* missing data? */
+  if(pall->Xna && Missing(index, var)) { 
+    /* if var coordinate is missing then flip a coin */
+    //if(always || LeftBal() >= 0.5) 
+    if(always || unif_rand() < 0.5) 
+      pall->X[index][var] = -INF; /* forcing left below */
+    else pall->X[index][var] = INF; /* forcing right below */
+  }
+
+  /* (treat as) data not missing */
+  if(pall->X[index][var] <= val) return true;
+  else return false;
+}
+
+
+/*
+ * goLeft:
+ *
+ * see if the x point would go to the 
+ * left of the split
+ */
+
+bool Tree::goLeft(double *x, int *xna)
+{
+#ifdef DEBUG
+  assert(x);
+#endif
+
+  /* if the var coordinate is missing */
+  if(xna && xna[var]) {
+    assert(isinf(x[var]));
+    // if(LeftBal() >= 0.5) return true;
+    if(unif_rand() < 0.5) return true;
+    else return false;
+  } 
+
+  /* otherwise */
+  if(x[var] <= val) return true;
+  else return false;
+}
+
+
+/*
+ * LeftBal:
+ *
+ * returns the proportion of X[var,] <= val which is
+ * not NA
+ * 
+ * BOBBY: LeftBal could be maintained in the tree class for each input --
+ * that might be faster than re-computing it all the time.
+ */
+
+double Tree::LeftBal(void)
+{
+  /* populate p if it is NULL */
+  bool freep = false;
+  if(!p) {
+    assert(!isLeaf());
+    p = GetP(&n);
+    freep = true;
+  }
+
+  /* count up the balance */
+  Pall *pall = particle->pall;
+  double prop = 0.0;
+  unsigned int count = 0;
+  for(unsigned int i=0; i<n; i++) {
+    if(pall->Xna && Missing(p[i], var)) continue;
+    count++;
+    if(pall->X[p[i]][var] <= val) prop += 1.0;
+  }
+
+  /* maybe free p */
+  if(freep) { free(p); p = NULL; }
+
+  return prop /((double) count);
+}
+
 
 /* 
  * getDepth:
@@ -260,8 +352,6 @@ int Tree::getDepth(void) const
 
 bool Tree::isLeaf(void) const
 {
-  /* assert(!(leftChild != NULL && rightChild == NULL));
-     assert(!(leftChild == NULL && rightChild != NULL)); */
   if(leftChild == NULL && rightChild == NULL) return true;
   else return false;
 }
@@ -389,6 +479,8 @@ void Tree::grow(int var, double val)
 #ifdef DEBUG
   assert(isLeaf());
 #endif
+
+  if(isinf(val)) myprintf(stdout, "inf val in grow\n");
     
   /* assign the split */
   assert(var >= (int) particle->pall->smin);
@@ -396,11 +488,34 @@ void Tree::grow(int var, double val)
   this->val = val;
 
   /* grow the children; stop if partition too small */
-  assert(grow_children());
+  assert(grow_children(false));
   assert(leftChild->n + rightChild->n == n);
 
   /* clear p and and other data */
   IEconomy();
+}
+
+
+/*
+ * GetXcol:
+ *
+ * copy the var-column of X into pre-allocated space (x),
+ * returning the number of non-NA entries (of which only
+ * that many will reside in the first entries of x
+ */
+
+unsigned int Tree::GetXcol(unsigned int var, double *x)
+{
+  Pall *pall = particle->pall;
+  if(pall->Xna) {
+    unsigned int nact = 0;
+    for(unsigned int i=0; i<n; i++)
+      if(! Missing(p[i], var)) x[nact++] = pall->X[p[i]][var];
+    return nact;
+  } else {
+    for(unsigned int i=0; i<n; i++) x[i] = pall->X[p[i]][var];
+    return n;
+  }
 }
 
 
@@ -433,10 +548,12 @@ bool Tree::ChooseVarVal(void)
     /* calculate the growable dimensions, simultaneously,
        the edges of the growable rectangle */
     int growable = 0;
+    unsigned int nact;
     for(unsigned int j=0; j<pall->m - pall->smin; j++) {
-      for(unsigned int i=0; i<n; i++) x[i] = pall->X[p[i]][vars[j]];
-      rect[0][j] = quick_select(x, n, pall->minp - 1);
-      rect[1][j] = quick_select(x, n, n - pall->minp);
+      nact = GetXcol(vars[j], x);
+      if(nact < 2*pall->minp) continue;
+      rect[0][j] = quick_select(x, nact, pall->minp - 1);
+      rect[1][j] = quick_select(x, nact, nact - pall->minp);
       if(rect[0][j] < rect[1][j]) vars[growable++] = vars[j];
     }
     free(x);
@@ -448,7 +565,7 @@ bool Tree::ChooseVarVal(void)
     } 
     
     /* choose var and val from growable */
-    var = vars[(int) floor(((double)(growable)) * runif(0,1))];
+    var = vars[(int) floor(((double)(growable)) * unif_rand())];
     val = runif(rect[0][var-pall->smin], rect[1][var-pall->smin]);
     
     /* clean up */
@@ -458,31 +575,34 @@ bool Tree::ChooseVarVal(void)
   } else {  /* blindly choose from rectangle */
   
     /* choose dimension uniformly */
-    var = (int) floor(((double)(pall->m - pall->smin)) * runif(0,1));
+    var = (int) floor(((double)(pall->m - pall->smin)) * unif_rand());
     var += pall->smin;
-    double mn, mx;
-    mn = mx = pall->X[0][var];
+    double mn = INF;
+    double mx = -INF;
     
     if(pall->rprop == LUVAR) { /* use LU on the var */
       double *x = new_vector(n);
-      for(unsigned int i=0; i<n; i++) x[i] = pall->X[p[i]][var];
-      mn = quick_select(x, n, pall->minp - 1);
-      mx = quick_select(x, n, n - pall->minp);
+      unsigned int nact = GetXcol(var, x);
+      if(nact < 2*pall->minp) { free(x); return false; }
+      mn = quick_select(x, nact, pall->minp - 1);
+      mx = quick_select(x, nact, nact - pall->minp);
       free(x);
       if(mn >= mx) return false;
     } else { /* find side of the rectangle */
-      for(unsigned int i=1; i<n; i++) {
-	if(pall->X[i][var] < mn) mn = pall->X[i][var];
-	else if(pall->X[i][var] > mx) mx = pall->X[i][var];
-      }
+      mn = Min(var);
+      mx = Max(var);
+      if(isinf(mn) || isinf(mx)) return false;
     }
     
     /* select val */
     val = runif(mn, mx);
   }
 
+  /* sanity check and return */
+  assert(isfinite(val));
   return true;
 }
+
 
 /*
  * growProb:
@@ -501,17 +621,16 @@ double Tree::growProb(int *gvar, double *gval)
   Pall *pall = particle->pall;
 
   /* check if we're allowing grows */
-  if(pall->a <= 0 || pall->b <= 0) 
-    return 0.0;
+  if(pall->a <= 0 || pall->b <= 0) return 0.0;
 
   /* choose the split var and val */
-  if(!ChooseVarVal()) return -1e300*1e300;
+  if(!ChooseVarVal()) return -INF;
 
   /* try growing */
-  bool success = grow_children();
+  bool success = grow_children(true);
   /* should have returned above if !success */
   if(pall->rprop == LUALL) assert(success);  
-  else if(!success) return -1e300*1e300;
+  else if(!success) return -INF;
 
   /* calculate full posterior */
   double prob;
@@ -538,7 +657,7 @@ double Tree::growProb(int *gvar, double *gval)
 double Tree::pruneProb(void)
 {
   /* cannot prune if no parent, i.e., if root */
-  if(parent == NULL) return -1e300*1e300;
+  if(parent == NULL) return -INF;
 
   /* get the node data indices */
   assert(parent->p == NULL); 
@@ -547,7 +666,7 @@ double Tree::pruneProb(void)
   /* check if the prune is allowed */
   if(parent->n < 2*particle->pall->minp) {
     parent->IEconomy();
-    return -1e300*1e300;
+    return -INF;
   }
   
   /* update new parameters */
@@ -616,17 +735,64 @@ double Tree::stayProb(void)
 
 
 /*
+ * Missing:
+ *
+ * Randomly assign +/- Inf to any missing entries
+ */
+
+void Tree::Missing(void)
+{
+  Pall *pall = particle->pall;
+
+  // double lb = LeftBal();
+
+  if(pall->Xna) {
+    for(unsigned int i=0; i<n; i++) {
+      if(Missing(p[i], var)) { /* then flip a coin */
+	assert(isinf(pall->X[p[i]][var]));
+	// if(lb >= 0.5) pall->X[p[i]][var] = -INF;
+	if(unif_rand() < 0.5) pall->X[p[i]][var] = -INF;
+	else pall->X[p[i]][var] = INF; 
+      }
+    }
+  }
+}
+
+
+/*
+ * Missing:
+ * 
+ * check if a particular index into pall->X is missing
+ */
+
+bool Tree::Missing(unsigned int index, unsigned int var)
+{
+  Pall *pall = particle->pall;
+  assert(index < pall->n && var < pall->m);
+  assert(pall->Xna);
+  if(pall->Xna[index] >= 0 && pall->XNA[pall->Xna[index]][var]) {
+    assert(isinf(pall->X[index][var]));
+    return true;
+  } else return false;
+}
+
+
+/*
  * grow_children:
  * 
  * grow both left and right children based on splitpoint --
  * essentially copied from tgp
  */
 
-bool Tree::grow_children(void)
+bool Tree::grow_children(bool missrand)
 {
   /* can't grow in this case */
   if(n < 2*(particle->pall->minp)) return false;
 
+  /* deal with missing entries */
+  if(missrand) Missing();
+
+  /* grow left */
   unsigned int suc1 = grow_child(&leftChild, LEQ);
   if(!suc1 || !(leftChild->wellSized())) {
     if(leftChild) delete leftChild;
@@ -634,6 +800,8 @@ bool Tree::grow_children(void)
     assert(rightChild == NULL);
     return false;
   }
+
+  /* grow right */
   unsigned int suc2 = grow_child(&rightChild, GT);
   if(!suc2 || !(rightChild->wellSized())) {
     delete leftChild;
@@ -641,6 +809,8 @@ bool Tree::grow_children(void)
     leftChild = rightChild = NULL;
     return false;
   }
+
+  /* sanity check and return */
   assert(suc1 + suc2 == n);
   return true;
 }
@@ -668,6 +838,7 @@ int Tree::part_child(FIND_OP op, int **pnew, unsigned int *plen)
   
   return (*plen);
 }
+
 
 /*
  * grow_child:
@@ -904,23 +1075,28 @@ double Tree::Posterior(void) /* log post! */
 
   /* special classification treatment */
   if(pall->model == CLASS) {
-    double post = 0.0 - lgamma(((double) n) + 1.0);
+    double post = 0.0;
     double dm = (double) pall->nc;
     if(ng > 0) { /* add in retires */
+      post -= lgamma(((double) (n + ng)) + 1.0);
       assert(gcounts);
-      double asum = 0; double zsum = 0;
+      // double asum = 0; double zsum = 0;
       for(unsigned int i=0; i<pall->nc; i++) {
-	double dpi = gcounts[i] + 1.0/dm; asum += dpi;
-	double dci = (double) counts[i]; zsum += dci;
-	post += lgamma(dci + dpi) - lgamma(dpi) - lgamma(dci + 1.0);
-      }
-      post += lgamma(((double) n) + 1.0) + lgamma(asum) - lgamma(asum + zsum);
-    } else { /* no retires */
-      for(unsigned int i=0; i<pall->nc; i++) {
-	double dci = (double) counts[i];
-	post += lgamma(dci + 1.0/dm) - lgamma(dci + 1.0);
+	double dpi = gcounts[i] + 1.0/dm; // asum += dpi;
+	double dci = (double) counts[i]; // zsum += dci;
+	post += lgamma(dci + dpi); // - lgamma(dpi) - lgamma(dci + 1.0);
       }
       post -= dm * lgamma(1.0/dm);
+      // post += lgamma(((double) n) + 1.0) + lgamma(asum) - lgamma(asum + zsum);
+    } else { /* no retires */
+      post -= lgamma(((double) n) + 1.0);
+      for(unsigned int i=0; i<pall->nc; i++) {
+	// myprintf(stdout, "%d ", counts[i]);
+	double dci = (double) counts[i];
+	post += lgamma(dci + 1.0/dm); // - lgamma(dci + 1.0);
+      }
+      post -= dm * lgamma(1.0/dm);
+      // myprintf(stdout, "lpost=%g\n", post);
     }
     return post;
   }
@@ -928,7 +1104,7 @@ double Tree::Posterior(void) /* log post! */
   /* initial regression calculations */
   double df, s2numer, s2p;
   double dm = Regression(NULL, &s2numer, &df, &s2p);
-  if(s2numer <= 0.0) return -1e300*1e300;
+  if(s2numer <= 0.0) return -INF;
 
   /* integrated likelihood for this branch */
   double dn = (double) n;
@@ -1068,7 +1244,7 @@ Tree* Tree::AddDatum(unsigned int index)
 
   } else {
     assert(p == NULL);
-    if(pall->X[index][var] <= val) return leftChild->AddDatum(index);
+    if(goLeft(index, false)) return leftChild->AddDatum(index);
     else return rightChild->AddDatum(index);
   }
 }
@@ -1168,7 +1344,7 @@ Tree* Tree::RetireDatum(unsigned int index, double lambda)
 
   } else {
     assert(p == NULL);
-    if(pall->X[index][var] <= val) return leftChild->RetireDatum(index, lambda);
+    if(goLeft(index, false)) return leftChild->RetireDatum(index, lambda);
     else return rightChild->RetireDatum(index, lambda);
   }
 }
@@ -1199,8 +1375,7 @@ void Tree::DecrementP(unsigned int oldi, unsigned int newi)
 
   } else {
     assert(p == NULL);
-    if(particle->pall->X[oldi][var] <= val) 
-      return leftChild->DecrementP(oldi, newi);
+    if(goLeft(oldi, false)) return leftChild->DecrementP(oldi, newi);
     else return rightChild->DecrementP(oldi, newi);
   }
 }
@@ -1210,7 +1385,7 @@ void Tree::DecrementP(unsigned int oldi, unsigned int newi)
  * ReorderP:
  *
  * reorder the pointers p to new entries in pall->X and pall->y;
- * used in the rejuvination steps from Cloud via Particle
+ * used in the rejuvenation steps from Cloud via Particle
  */
 
 void Tree::ReorderP(int *o)
@@ -1375,12 +1550,35 @@ void Tree::CapRetired(void)
  * return the leaf node that contains x
  */
 
-Tree* Tree::GetLeaf(double *x)
+Tree* Tree::GetLeaf(double *x, int *xna)
 {
   if(isLeaf()) return this;
   else {
-    if(x[var] <= val) return leftChild->GetLeaf(x);
-    else return rightChild->GetLeaf(x);
+    if(goLeft(x, xna)) return leftChild->GetLeaf(x, xna);
+    else return rightChild->GetLeaf(x, xna);
+  }
+}
+
+
+/*
+ * GetLeaf:
+ *
+ * return the leaf node that contains pall->X[index,]
+ */
+
+Tree* Tree::GetLeaf(unsigned int index)
+{
+  if(isLeaf()) { 
+    if(particle->pall->Xna) {
+      for(unsigned int i=0; i<n; i++)
+	if(p[i] == (int) index) return this;
+      return NULL; /* could not find index */
+    } else return this;
+  } else {
+    Tree *leaf = NULL;
+    if(goLeft(index, true)) leaf = leftChild->GetLeaf(index);
+    if(!leaf) leaf = rightChild->GetLeaf(index);
+    return leaf;
   }
 }
 
@@ -1458,7 +1656,7 @@ double Tree::PostPred(double *x, double y)
 /*
  * LinearAdjust:
  *
- * adjustments to the latter two arguments, used for prediction,
+ * adjustments to the latter three arguments, used for prediction,
  * that must be made under the linear model; if XtXix is allocated,
  * then that space is used to hold that value (for use outside), 
  * if not then new space is allocated; if y is allocated then 
@@ -1574,7 +1772,6 @@ void Tree::Calc(void)
  * for prune: gather the sufficient stats from the leaves
  * and then do the relevant calculations if needed
  *
- * NEED TO CODE UP FOR CLASSIFICATION
  */
 
 void Tree::AccumCalc(void)
@@ -1940,10 +2137,9 @@ double Tree::ECI(double *x, double *y, double ymean, double ysd,
      return EI(ymean, sd, df, fmin);
 
    } else { /* recurse into leaves */
-     if(x[var] <= val && y[var] <= val) 
-       return leftChild->ECI(x, y, ymean, ysd, fmin, ei);
-     else if(x[var] > val && y[var] > val) 
-       return rightChild->ECI(x, y, ymean, ysd, fmin, ei);
+     bool xleft = goLeft(x, NULL); bool yleft = goLeft(y, NULL);
+     if(xleft && yleft) return leftChild->ECI(x, y, ymean, ysd, fmin, ei);
+     else if(!xleft && !yleft) return rightChild->ECI(x, y, ymean, ysd, fmin, ei);
      else return ei; /* x and y aren't in same region */
    }
 }
@@ -1984,10 +2180,9 @@ double Tree::ALC(double *x, double *y)
      return (s2numer/(df-2.0)) * sq(ytXtXix)/(1.0 + xtXtXix);
 
    } else { /* recurse into leaves */
-     if(x[var] <= val && y[var] <= val) 
-       return leftChild->ALC(x, y);
-     else if(x[var] > val && y[var] > val) 
-       return rightChild->ALC(x, y);
+     bool xleft = goLeft(x, NULL); bool yleft = goLeft(y, NULL);
+     if(xleft && yleft) return leftChild->ALC(x, y);
+     else if(!xleft && !yleft) return rightChild->ALC(x, y);
      else return 0.0; /* x and y aren't in same region */
    }
 }
@@ -2001,7 +2196,7 @@ double Tree::ALC(double *x, double *y)
  * of reference locations
  */
 
-double Tree::ALC(double *x, double **rect)
+double Tree::ALC(double *x, double **rect, int *cat, bool approx)
 {
    if(isLeaf()) {
 
@@ -2033,7 +2228,8 @@ double Tree::ALC(double *x, double **rect)
      }
 
      /* do the ALC integration analytically */
-     double gral = intdot2(pall->bmax, c, y, rect[0], rect[1]);
+     double gral = intdot2(pall->bmax, c, y, rect[0], rect[1], cat, 
+			   ((double) approx) * (dn + ng));
      
      /* undo any rect adjustments */
      if(pall->model == LINEAR && xmean) {
@@ -2046,14 +2242,16 @@ double Tree::ALC(double *x, double **rect)
      return s2numer*gral/((df-2.0)*(1.0 + xtXtXix));
 
    } else { /* recurse into leaves */
-     if(x[var] <= val) { /* adjust right edge of rect */
-       double save = rect[1][var]; rect[1][var] = val;
-       double alc = leftChild->ALC(x, rect);
+     if(goLeft(x, NULL)) { /* adjust right edge of rect */
+       double save = rect[1][var]; 
+       if(cat[var]) rect[1][var] /= 2.0; else rect[1][var] = val;
+       double alc = leftChild->ALC(x, rect, cat, approx);
        rect[1][var] = save; /* then put back */
        return alc;
      } else { /* adjust left edge of rect */
-       double save = rect[0][var]; rect[0][var] = val;
-       double alc = rightChild->ALC(x, rect);
+       double save = rect[0][var]; 
+       if(cat[var]) rect[0][var] = rect[1][var]/2.0; else rect[0][var] = val;
+       double alc = rightChild->ALC(x, rect, cat, approx);
        rect[0][var] = save; /* then put back */
        return alc;
      }
@@ -2069,7 +2267,7 @@ double Tree::ALC(double *x, double **rect)
  * by integrating over a rectangle of reference locations
  */
 
-void Tree::ALC(double **rect, double *alc_out)
+void Tree::ALC(double **rect, int *cat, bool approx, double *alc_out)
 {
   if(isLeaf()) {
 
@@ -2115,7 +2313,8 @@ void Tree::ALC(double **rect, double *alc_out)
       }
       
       /* do the ALC integration analytically */
-      double gral = intdot2(pall->bmax, c, y, rect[0], rect[1]);
+      double gral = intdot2(pall->bmax, c, y, rect[0], rect[1], cat,
+			    ((double) approx) * (dn + ng));
       
       /* factor in the constant part */
       alc_out[p[i]] += al[i] = s2numer*gral/((df-2.0)*(1.0 + xtXtXix));
@@ -2130,13 +2329,15 @@ void Tree::ALC(double **rect, double *alc_out)
   } else { /* recurse into leaves */
     
     /* left leaf: adjust right edge of rect */
-    double save = rect[1][var]; rect[1][var] = val;
-    leftChild->ALC(rect, alc_out);
+    double save = rect[1][var]; 
+    if(cat[var]) rect[1][var] /= 2.0; else rect[1][var] = val;
+    leftChild->ALC(rect, cat, approx, alc_out);
     rect[1][var] = save; /* then put back */
     
     /* right leaf: adjust left edge of rect */
-    save = rect[0][var]; rect[0][var] = val;
-    rightChild->ALC(rect, alc_out);
+    save = rect[0][var]; 
+    if(cat[var]) rect[0][var] = rect[1][var]/2.0; else rect[0][var] = val;
+    rightChild->ALC(rect, cat, approx, alc_out);
     rect[0][var] = save; /* then put back */
   }
 }
@@ -2182,6 +2383,168 @@ void Tree::Entropy(double *entropy_out)
     leftChild->Entropy(entropy_out);
     rightChild->Entropy(entropy_out);
   }
+}
+
+
+/* 
+ * Relevance:
+ *
+ * calculate the change average variance under a regression model
+ * compared to the children, recursively for all internal nodes;
+ * i.e., calculate partial dependence statistics for the split
+ * dimensions
+ */
+
+double Tree::Relevance(double **rect, int *cat, bool approx, double *delta)
+{
+  double lcav, rcav;
+  lcav = rcav = 0.0;
+
+  /* recurse into leaves */
+  if(!isLeaf()) {  
+    double save = rect[1][var]; 
+    if(cat[var]) rect[1][var] /= 2.0; else rect[1][var] = val;
+    lcav = leftChild->Relevance(rect, cat, approx, delta);
+    rect[1][var] = save; /* then put back */
+    
+    save = rect[0][var]; 
+    if(cat[var]) rect[0][var] = rect[1][var]/2.0; else rect[0][var] = val;
+    rcav = rightChild->Relevance(rect, cat, approx, delta);
+    rect[0][var] = save; /* then put back */
+  }
+
+  /* averave variance calculation for this node */
+  double pav;
+  if(particle->pall->model == CLASS) pav = AvgEntropy(rect, cat, approx);
+  else pav = AvgVar(rect, cat, approx);  
+
+  /* accumulate reduction in variance for split */
+  double reduce = pav - lcav - rcav;
+  // if(reduce < 0) reduce = 0;
+  if(!isLeaf()) delta[var] += reduce;
+
+  /* return the average variance calculation for this node */
+  return pav;
+}
+
+
+/* 
+ * AvgVar:
+ *
+ * calculate the average variance under a regression model
+ */
+
+
+double Tree::AvgVar(double **rect, int *cat, bool approx)
+{
+  /* pall of the particle this tree belongs to */
+  Pall *pall = particle->pall;
+  
+  /* AvgVar not supported for classification */
+  assert(pall->model != CLASS);
+  
+  /* if not leaf, get parameters children */
+  if(!isLeaf()) {
+    assert(p == NULL); 
+    p = GetP(&n);
+    AccumCalc();
+  }
+  
+  /* initial regression calculations */
+  double df, s2numer;
+  Regression(NULL, &s2numer, &df, NULL);
+  
+  /* constant model ALC calculations */
+  double xtXtXix;
+  double dn = (double) n;
+  xtXtXix = (1.0/(ng + dn)) * ((double) pall->icept);
+  double c = 1.0 + xtXtXix;
+  
+  /* adjust rectangle by xmean */
+  if(pall->model == LINEAR && xmean) {
+    linalg_daxpy(pall->bmax,0.0-1.0,xmean,1,rect[0],1);
+    linalg_daxpy(pall->bmax,0.0-1.0,xmean,1,rect[1],1);
+  }
+  
+  /* do the ALC integration analytically */
+  double gral = intdot(pall->bmax, c, XtXi, rect[0], rect[1], cat,
+		       ((double) approx) * (dn + ng));
+  
+  /* undo any rect adjustments */
+  if(pall->model == LINEAR && xmean) {
+    linalg_daxpy(pall->bmax,1.0,xmean,1,rect[0],1);
+    linalg_daxpy(pall->bmax,1.0,xmean,1,rect[1],1);
+  }
+
+  /* possibly clean up */
+  if(!isLeaf()) IEconomy();
+
+  return s2numer*gral/df;
+}
+
+
+/* 
+ * AvgEntropy:
+ *
+ * calculate the average predictive entropy under a classification model
+ */
+
+
+double Tree::AvgEntropy(double **rect, int *cat, bool approx)
+{
+  /* pall of the particle this tree belongs to */
+  Pall *pall = particle->pall;
+  
+  /* AvgVar not supported for classification */
+  assert(pall->model == CLASS);
+  
+  /* if not leaf, get parameters children */
+  if(!isLeaf()) {
+    assert(p == NULL); 
+    p = GetP(&n);
+    AccumCalc();
+  }
+
+  /* do entropy calculation */
+  double entropy = 0.0;
+  double pred = 0.0;
+
+  /* double versions of integers */
+  unsigned int nc = particle->pall->nc;
+  double dm = (double) nc;
+  double dn = (double) n;
+  
+  /* probability for each class */
+  if(ng > 0) { /* using retires */
+    assert(gcounts);
+    for(unsigned int i=0; i<nc; i++) {
+      pred = (((double) (counts[i] + gcounts[i])) + 1.0/dm)/(1.0 + dn + ng);
+      entropy += 0.0 - pred * log(pred);
+    }
+  } else { /* no retires */
+    for(unsigned int i=0; i<nc; i++) {
+      pred = (((double) counts[i]) + 1.0/dm)/(1.0 + dn);
+      entropy += 0.0 - pred * log(pred);
+    }
+  }
+
+  /* adjust by rectangle area */
+  double area = 1.0; 
+  if(approx) area = dn + ng;
+  else {
+    double bjmaj = 0.0;
+    for(unsigned int j=0; j<pall->bmax; j++) {
+      bjmaj = rect[1][j] - rect[0][j];
+      /* for the intercept or degenerate rectangle */
+      if(cat[j] || bjmaj <= DOUBLE_EPS) continue;
+      area *= bjmaj;
+    }
+  }
+
+  /* possiblyf clean up */
+  if(!isLeaf()) IEconomy();
+
+  return area*entropy;
 }
 
 
@@ -2246,6 +2609,46 @@ double Tree::leavesAvgRetired(void)
 
 
 /*
+ * Min:
+ * 
+ * returns the smallest X[p,var] value
+ */
+
+double Tree::Min(unsigned int var)
+{
+  Pall *pall = particle->pall;
+  double vmin = INF;
+  for(unsigned int i=0; i<n; i++) {
+    if(pall->Xna && Missing(p[i], var)) continue;
+    if(particle->pall->X[p[i]][var] < vmin) 
+      vmin = particle->pall->X[p[i]][var];
+  }
+
+  return vmin;
+}
+
+
+/*
+ * Max:
+ * 
+ * returns the largest X[p,var] value
+ */
+
+double Tree::Max(unsigned int var)
+{
+  Pall *pall = particle->pall;
+  double vmax = -INF;
+  for(unsigned int i=0; i<n; i++) {
+    if(pall->Xna && Missing(p[i], var)) continue;
+    if(particle->pall->X[p[i]][var] > vmax) 
+      vmax = particle->pall->X[p[i]][var];
+  }
+
+  return vmax;
+}
+
+
+/*
  * log_determinant_chol:
  *
  * returns the log determinant of the n x n
@@ -2270,57 +2673,147 @@ double log_determinant_chol(double **M, const unsigned int n)
  * intdot2:
  *
  * integral (dx, m-dimensional) of the squared dot product 
- * (a + t(x) %*% y)^2 over the m-rectangle given by cbind(a,b)
+ * (a + t(ytilde) %*% x)^2 over the m-rectangle given by cbind(a,b), where
+ * ytilde = y %*% solve(G) where y is a reference location and G is a
+ * regression Gram matrix.  x being null implies constant model instead of
+ * linear regression
  */
 
-double intdot2(unsigned int m, double c, double *y, double *a, double *b)
+double intdot2(unsigned int m, double c, double *x, double *a, double *b,
+	       int *cat, double approx)
 {
   unsigned int i,j;
-  double gral, pinv, area;
+  double gral, pinv, area, bi2, ai2, bi2mai2, bimai;
 
   /* calculate the area of the rectangle */
-  area = 1.0;
-  for(i=0; i<m; i++) {
-    pinv = b[i] - a[i];
-    if(pinv <= 0) { c += b[i]*y[i]; continue; }
-    area *= pinv;
+  if(approx) {
+    area = approx;
+    if(x) for(i=0; i<m; i++) 
+	    if(!cat[i] && b[i] - a[i] <= DOUBLE_EPS) c += b[i]*x[i];
+  } else {
+    area = 1.0;
+    for(i=0; i<m; i++) {
+      bimai = b[i] - a[i];      
+      if(cat[i]) area *= bimai;  /* next: for icept or degenerate rectangle */
+      else if(x && bimai <= DOUBLE_EPS) c += b[i]*x[i];
+      else area *= bimai;
+    }
   }
   assert(area > 0);
+
 
   /* start calculation of the intrgral with a^2 part */
   gral = c*c;
 
   /* skips the hard integration part if not needed */
-  if(y) { 
+  if(x) { 
 
     for(i=0; i<m; i++) {
 
       /* then axy part */
 
       /* pinv <- prod(b[-i] - a[-i]) */
-      pinv = (b[i] - a[i]);
-      if(pinv <= DOUBLE_EPS) continue;
+      pinv = bimai = b[i] - a[i];
+      if(cat[i] || pinv <= DOUBLE_EPS) continue;
 
       /* gral <- gral + c*sum(x^2 * y)|_a^b */
-      gral += c*y[i]*(b[i]*b[i] - a[i]*a[i])/pinv;
+      bi2 = b[i]*b[i]; ai2 = a[i]*a[i]; bi2mai2 = bi2 - ai2;
+      gral += c*x[i]*bi2mai2/pinv;
     
       /* then the (xy)^2 part */
       
-      /* gral <- gral + p*(y[i]^2)*(b[i]^3 - a[i]^3)/3 */
-      gral += y[i]*y[i]*(b[i]*b[i]*b[i]-a[i]*a[i]*a[i])/(pinv*3.0);
+      /* gral <- gral + p*(x[i]^2)*(b[i]^3 - a[i]^3)/3 */
+      gral += x[i]*x[i]*(b[i]*bi2-a[i]*ai2)/(pinv*3.0);
       
       for(j=0; j<i; j++) {
 	
 	/* pinv <- prod(b[-c(i,j)] - a[-c(i,j)]) */
-	pinv = ((b[i] - a[i])*(b[j] - a[j]));
+	pinv = bimai*(b[j] - a[j]);
 	if(pinv <= DOUBLE_EPS) continue;
 
-	/* gral <- gral + p*y[i]*y[j]*(b[i]^2-a[i]^2)*(b[j]^2-a[j]^2)/2 */
-	gral += y[i]*y[j]*(b[i]*b[i]-a[i]*a[i])*(b[j]*b[j]-a[j]*a[j])/(pinv*2.0);
+	/* gral <- gral + p*x[i]*x[j]*(b[i]^2-a[i]^2)*(b[j]^2-a[j]^2)/2 */
+	gral += x[i]*x[j]*bi2mai2*(b[j]*b[j]-a[j]*a[j])/(pinv*2.0);
       }
       
     }
   }
 
   return area*gral;
+}
+
+
+/*
+ * intdot:
+ *
+ * integral (dx, m-dimensional) of the dot product 
+ * c + t(x) %*% solve(G) %*% x over the m-rectangle given by cbind(a,b),
+ * G is a regression Gram matrix, and g = solve(G);
+ * g is null for constant model
+ */
+
+double intdot(unsigned int m, double c, double **g, double *a, 
+	      double *b, int *cat, double approx)
+{
+  unsigned int i,j;
+  double gral, area, bi2, ai2, bimai, bjmaj, bi2mai2, bj2maj2;
+
+  /* initialization */
+  gral = 0.0;
+
+  /* calculate the area of the rectangle */
+  if(approx) area = approx;
+  else {
+    area = 1.0;
+    for(i=0; i<m; i++) {
+      bimai = b[i] - a[i];
+      /* if not intercept or degenerate rectangle */
+      if(cat[i] || bimai > DOUBLE_EPS) area *= bimai;
+    }
+  }
+  assert(area > 0);
+
+  /* skips the hard integration part if not needed */
+  if(g) { 
+
+    for(i=0; i<m; i++) {
+
+      /* useful calculations */
+      bi2 = b[i]*b[i]; 
+
+      /* pinv <- prod(b[-i] - a[-i]), dealing with a possible
+         intercept */
+      bimai = b[i] - a[i];
+      if(cat[i] || bimai <= DOUBLE_EPS) {
+	gral += g[i][i]*bi2;
+	bi2mai2 = 2.0*b[i];
+	bimai = 1.0;
+      } else { /* standard calculation */
+
+	/* save for later */
+	ai2 = a[i]*a[i]; 
+	bi2mai2 = bi2 - ai2;
+
+	/* gral <- gral + p*(x[i]^2)*(b[i]^3 - a[i]^3)/3 */
+	gral += g[i][i]*(b[i]*bi2-a[i]*ai2)/(bimai*3.0);
+      }
+      
+      /* inner loop */
+      for(j=0; j<i; j++) {
+	
+	/* pinv <- prod(b[-c(i,j)] - a[-c(i,j)]), dealing with
+	   a possible intercept */
+	bjmaj = b[j] - a[j];
+	if(cat[j] || bjmaj <= DOUBLE_EPS) {
+	  bjmaj = 1.0;
+	  bj2maj2 = 2*b[j];
+	} else bj2maj2 = b[j]*b[j] - a[i]*a[j];
+
+	/* gral <- gral + p*x[i]*x[j]*(b[i]^2-a[i]^2)*(b[j]^2-a[j]^2)/2 */
+	gral += g[i][j]*(bi2mai2)*(bj2maj2)/(bimai*bjmaj*2.0);
+      }
+      
+    }
+  }
+
+  return area*(c + gral);
 }

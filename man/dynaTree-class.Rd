@@ -10,7 +10,9 @@
 \alias{entropyX-methods}
 \alias{ieci-methods}
 \alias{classprobs-methods}
-\alias{rejuvinate-methods}
+\alias{rejuvenate-methods}
+\alias{relevance-methods}
+\alias{intervals-methods}
 \alias{retire,dynaTree-method}
 \alias{sens,dynaTree-method}
 \alias{copy,dynaTree-method}
@@ -19,7 +21,9 @@
 \alias{entropyX,dynaTree-method}
 \alias{ieci,dynaTree-method}
 \alias{classprobs,dynaTree-method}
-\alias{rejuvinate,dynaTree-method}
+\alias{rejuvenate,dynaTree-method}
+\alias{relevance,dynaTree-method}
+\alias{intervals,dynaTree-method}
 \alias{sens}
 \alias{retire}
 \alias{copy}
@@ -28,7 +32,9 @@
 \alias{entropyX}
 \alias{ieci}
 \alias{classprobs}
-\alias{rejuvinate}
+\alias{rejuvenate}
+\alias{relevance}
+\alias{intervals}
 \title{Class "dynaTree"}
 \description{
 	A stub for class dynaTree and its custom

@@ -74,14 +74,17 @@ class Cloud
   void ALC(double **XX, unsigned int nn, double **Xref, 
 	   unsigned int nref, double **probs, double *alc_out, 
 	   unsigned int verb);
-  void ALC(double **XX, unsigned int nn, double **rect, 
-	   double *alc_out, unsigned int verb);
-  void ALC(double **rect, double *alc_out, unsigned int verb);
+  void ALC(double **XX, unsigned int nn, double **rect, int *cat,
+	   bool approx, double *alc_out, unsigned int verb);
+  void ALC(double **rect, int *cat, bool approx, double *alc_out, 
+	   unsigned int verb);
   void Sens(int *cls, unsigned int nns, unsigned int aug, 
 	    double **rect, double *shape, double *mode, int *cat,
 	    double **Xgrid, unsigned int ngrid, double span, 
 	    double **mean, double **q1, double **q2, 
 	    double **S, double **T, unsigned int verb);
+  void Relevance(double **rect, int *cat, bool approx, double **delta, 
+	      unsigned int verb);
 
   /* retiring particles for online learning */
   void Retire(int *pretire, unsigned int nretire, double lambda, 
@@ -90,6 +93,7 @@ class Cloud
   /* variable selection */
   void VarPropUse(double *counts);
   void VarPropTotal(double *counts);
+  void Intervals(unsigned int index, unsigned int var, double *a, double *b);
 
   /* prediction for classification */
   void Predict(double **XX, int *yy, unsigned int nn, double **p,

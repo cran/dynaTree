@@ -60,7 +60,7 @@ class Particle
   void Print(int l);
 
   /* prediction */
-  double PostPred(double *xx, double yy);
+  double PostPred(double *xx, double yy, int *xna);
   void Predict(double **XX, double *yy, unsigned int nn, double *mean, 
 	       double *sd, double *df, double *var, double *q1, 
 	       double *q2, double *yypred, double *ZZ);
@@ -68,11 +68,13 @@ class Particle
 	      unsigned int nref, double *probs, double **eimeci);
   void ALC(double **XX, unsigned int nn, double **Xref, unsigned int nref, 
 	   double *probs, double **alc);
-  void ALC(double **XX, unsigned int nn, double **rect, double *alc);
-  void ALC(double **rect, double *alc);
+  void ALC(double **XX, unsigned int nn, double **rect, int *cat, bool approx,
+	   double *alc);
+  void ALC(double **rect, int *cat, bool approx, double *alc);
   void Sens(unsigned int nns, unsigned int aug, double **rect, double *shape, 
 	    double *mode, int *cat, double **Xgrid, unsigned int ngrid, 
 	    double span, double **main, double *S, double *T);
+  double Relevance(double **rect, int *cat, bool approx, double *delta);
 
   /* retire particles for online learning */
   void Retire(unsigned int index, double lambda);
@@ -91,6 +93,7 @@ class Particle
   /* variable selection */
   void VarCountUse(int *c);
   void VarCountTotal(double *c);
+  void Interval(unsigned int index, unsigned int var, double *a, double *b);
 };
 
 void main_effects(double **XX, unsigned int nn, unsigned int m, 

@@ -34,10 +34,10 @@ varproptotal(object)
   A vector of proportions of length \code{ncol(object$X))} is returned
 }
 \references{
- Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
-  \dQuote{Dynamic trees for learning and design}
-  Journal of the American Statistical Association, 106(493), pp. 109-123;
-  arXiv:0912.1636
+  Gramacy, R.B., Taddy, M.A., and S. Wild (2011).
+ \dQuote{Variable Selection and Sensitivity Analysis via
+   Dynamic Trees with an Application to Computer Code Performance Tuning}
+  arXiv:1108.4739
   
   \url{http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html}
 }
@@ -45,7 +45,8 @@ varproptotal(object)
   Robert B. Gramacy \email{rbgramacy@chicagobooth.edu} and\cr
 Matt Taddy \email{taddy@chicagobooth.edu}}
 
-\seealso{ \code{\link{dynaTree}} }
+\seealso{ \code{\link{dynaTree}}, \code{\link{sens.dynaTree}},
+\code{\link{relevance.dynaTree}} }
 \examples{
 ## ffit a dynaTree model to the Ozone data
 X <- airquality[,2:4]
@@ -56,6 +57,11 @@ out <- dynaTree(X=X[!na,], y=y[!na])
 ## obtain variable usage proportions
 varpropuse(out)
 varproptotal(out)
+
+## gather relevance statistics which are more meaningful
+out <- relevance(out)
+boxplot(out$relevance)
+abline(h=0, col=2, lty=2)
 
 ## clean up
 deletecloud(out)

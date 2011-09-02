@@ -3,7 +3,7 @@
 \docType{package}
 \title{Dynamic trees for learning and design}
 \description{Inference by sequential Monte Carlo for
-  dynamic tree regression and classification models by,
+  dynamic tree regression and classification models 
   with hooks provided for sequential design and optimization, 
   fully online learning with drift, variable selection, and   
   sensitivity analysis of inputs.  Illustrative

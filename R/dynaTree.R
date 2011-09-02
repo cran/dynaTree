@@ -5,9 +5,8 @@
 dynaTree <-
   function(X, y, N=1000, model=c("constant", "linear", "class"),
            nu0s20=c(0,0), ab=c(0.95, 2), minp=NULL, sb=NULL,
-           icept=c("implicit", "augmented", "none"),
-           rprop=c("luvar", "luall", "reject"), 
-           verb=round(length(y)/10))
+           nstart=minp, icept=c("implicit", "augmented", "none"),
+           rprop=c("luvar", "luall", "reject"), verb=round(length(y)/10))
   {
     ## extract vitals of X, and check dims
     X <- as.matrix(X)
@@ -40,7 +39,13 @@ dynaTree <-
       if(model == "constant") minp <- 4
       else if(model == "linear") minp <- 2*sb[2] + 4
       else minp <- 1 ## for classify
-    }
+    } else if(length(minp) != 1 || minp <= 0) stop("minp must be a positive integer")
+
+    ## check nstart
+    if(is.null(nstart)) nstart <- 2*minp
+    else if(length(nstart) != 1 || nstart < minp) stop("nstart must be >= minp")
+    if(length(y) <= nstart) stop("must have more than nstart X-y pairs")
+    print(c(length(y), nstart))
     
     ## check intercept
     icept <- match.arg(icept)
@@ -52,6 +57,16 @@ dynaTree <-
     }
     if(icept == "implicit") icepti <- 1
     else icepti <- 0
+
+    ## check for missing data
+    tXNA <- Xna <- NULL; NAX <- is.na(X)
+    if(any(NAX)) {
+      o  <- order(apply(NAX, 1, sum))
+      X <- X[o,]; y <- y[o]; NAX <- NAX[o,]   ## NOT SURE THIS IS NECESSARY
+      Xna <- apply(NAX, 1, any) 
+      tXNA <- t(NAX[Xna,])
+      X[is.na(X)] <- -12345 ## sanity checking code
+    }
 
     ## double check that minp is largest that longest initial run
     if(model != "class") {
@@ -87,9 +102,12 @@ dynaTree <-
               T = as.integer(T),
               N = as.integer(N),
               X = as.double(t(X)),
+              Xna = as.integer(Xna),
+              XNA = as.integer(tXNA),
               y = as.double(y),
               model = as.integer(imodel),
               params = as.double(params),
+              nstart = as.integer(nstart),
               verb = as.integer(verb),
               lpred = double(T),
               num = integer(1),
@@ -99,7 +117,12 @@ dynaTree <-
     obj$time <- proc.time()[3] - p1
     
     ## put non-transposed X back and model
+    if(!is.null(tXNA)) {
+      X[NAX] <- NA
+      obj$XNA <- t(tXNA)
+    } else obj$XNA <- NULL
     obj$X <- X
+    obj$Xna <- Xna
     obj$T <- NULL
     obj$model <- model
     if(obj$model == "class") {
@@ -133,6 +156,16 @@ update.dynaTree <- function(object, X, y, verb=round(length(y)/10), ...)
     if(object$icept == "augmented") X <- cbind(rep(1,T), X)
     if(ncol(X) != m) stop("column mismatch for X")
 
+    ## check for missing data
+    tXNA <- Xna <- NULL; NAX <- is.na(X)
+    if(any(NAX)) {
+      o  <- order(apply(NAX, 1, sum))
+      X <- X[o,]; y <- y[o]; NAX <- NAX[o,]  ## NOT SURE THIS IS NECESSARY
+      Xna <- apply(NAX, 1, any) 
+      tXNA <- t(NAX[Xna,])
+      X[is.na(X)] <- -12345 ## sanity checking code
+    }
+
     ## ensure new class labels are valid
     if(object$model == "class") {
       y <- round(y)-1 ## check for sain class labels
@@ -146,21 +179,28 @@ update.dynaTree <- function(object, X, y, verb=round(length(y)/10), ...)
 
     ## call the C routine to build up the PL object
     object2 <- .C("update_R",
-               cloud = as.integer(object$num),
-               m = as.integer(m),
-               T = as.integer(T),
-               X = as.double(t(X)),
-               y = as.double(y),
-               verb = as.integer(verb),
-               lpred = double(T),
-               PACKAGE = "dynaTree")
-
+                  cloud = as.integer(object$num),
+                  m = as.integer(m),
+                  T = as.integer(T),
+                  X = as.double(t(X)),
+                  Xna = as.integer(Xna),
+                  tXNA = as.integer(tXNA),
+                  y = as.double(y),
+                  verb = as.integer(verb),
+                  lpred = double(T),
+                  PACKAGE = "dynaTree")
+    
     ## remove cloud
     object2$cloud <- NULL
     
     ## put non-transposed X back, and combine
     if(object$mode == "class") y <- y + 1
+    if(!is.null(tXNA)) {
+      X[NAX] <- NA
+      obj$XNA <- rbind(object$XNA, t(tXNA))
+    }
     object$X <- rbind(object$X, X)
+    object$Xna <- c(object$Xna, Xna)
     object$y <- c(object$y, y)
     object$lpred <- c(object$lpred, object2$lpred)
 
@@ -192,7 +232,7 @@ retire.dynaTree <- function(object, indices, lambda=1, verb=0)
     p1 <- proc.time()[3]
     
     ## must have explicit intercept or none
-    if(object$model != "class" && object$icept == "implicit")
+    if(object$model == "linear" && object$icept == "implicit")
       stop("must use explicit intercept (i.e., augmented or none)")
        
     ## check to make sure we're not removing non-existant indices
@@ -287,17 +327,17 @@ copy.dynaTree <- function(obj)
 setMethod("copy", "dynaTree", copy.dynaTree)
 
 
-## rejuvinate.dynaTree:
+## rejuvenate.dynaTree:
 ##
 ## re-initializes a particle set and combines it with the old
 ## one
 
-setGeneric("rejuvinate",
+setGeneric("rejuvenate",
             function(object, ...)
-            standardGeneric("rejuvinate")
+            standardGeneric("rejuvenate")
             )
 
-rejuvinate.dynaTree <- function(object, odr=order(runif(length(object$y))),
+rejuvenate.dynaTree <- function(object, odr=order(runif(length(object$y))),
                                 verb=round(length(object$y)/10))
   {
     ## for timing purposes
@@ -317,10 +357,10 @@ rejuvinate.dynaTree <- function(object, odr=order(runif(length(object$y))),
     }
 
     ## perhaps print something
-    ## if(verb > 0) cat("rejuvinating particles\n")
+    ## if(verb > 0) cat("rejuvenating particles\n")
     
-    ## call C-side rejuvination
-    r <- .C("rejuvinate_R",
+    ## call C-side rejuvenate
+    r <- .C("rejuvenate_R",
             num = as.integer(object$num),
             odr = as.integer(odr-1),
             n = as.integer(n),
@@ -334,7 +374,7 @@ rejuvinate.dynaTree <- function(object, odr=order(runif(length(object$y))),
     return(object)
   }
 
-setMethod("rejuvinate", "dynaTree", rejuvinate.dynaTree)
+setMethod("rejuvenate", "dynaTree", rejuvenate.dynaTree)
 
 
 ## dynaTrees:
@@ -346,10 +386,10 @@ setMethod("rejuvinate", "dynaTree", rejuvinate.dynaTree)
 "dynaTrees"<-
   function(X, y, N=1000, R=10,
            model=c("constant", "linear", "class"), nu0s20=c(0,0),
-           ab=c(0.95, 2), minp=NULL, sb=NULL,
+           ab=c(0.95, 2), minp=NULL, sb=NULL, nstart=minp,
            icept=c("implicit", "augmented", "none"),
            rprop=c("luvar", "luall", "reject"), XX=NULL, yy=NULL,
-           varprop=FALSE, plotit=FALSE, proj=1, rorder=TRUE,
+           varstats=FALSE, lhs=NULL, plotit=FALSE, proj=1, rorder=TRUE,
            verb=round(length(y)/10), pverb=round(N/10),  ...)
   {
     ## use dynaTree and predict by themselves when R = 1
@@ -358,6 +398,9 @@ setMethod("rejuvinate", "dynaTree", rejuvinate.dynaTree)
     ## coerse X
     X <- as.matrix(X)
     n <- nrow(X)
+
+    ## check model
+    model <- match.arg(model)
     
     ## check rorder
     if(length(rorder) > 1) {
@@ -367,26 +410,27 @@ setMethod("rejuvinate", "dynaTree", rejuvinate.dynaTree)
     } else o <- apply(matrix(runif(nrow(X)*(R-1)), ncol=R-1), 2, order)
     o <- cbind((1:n), o)
 
-    ## check varprop
-    if(length(varprop) != 1 || !is.logical(varprop))
-      stop("varprop should be a scalar logical")
+    ## check varstats
+    if(length(varstats) != 1 || !is.logical(varstats))
+      stop("varstats should be a scalar logical")
 
     ## build the first model
     if(verb > 0) cat("\nround 1:\n")
-    obj <- dynaTree(X, y, N, model, nu0s20, ab, minp, sb, icept, rprop, verb)
+    obj <- dynaTree(X, y, N, model, nu0s20, ab, minp, sb, nstart, icept, rprop, verb)
 
     ## predict or perform sensitivity analysis
     if(!is.null(XX)) {
       if(is.character(XX) && XX == "sens") {
         if(!is.null(yy)) warning("yy ignored in sensitivity analysis")
-        obj <- sens.dynaTree(obj, verb=pverb, ...)
+        obj <- sens.dynaTree(obj, lhs=lhs, verb=pverb, ...)
       } else obj <- predict(obj, XX, yy, verb=pverb, ...)
     }
 
     ## maybe accumulate variable use proportions
-    if(varprop) {
+    if(varstats) {
       obj$vpu <- varpropuse(obj)
       obj$vpt <- varproptotal(obj)
+      obj <- relevance(obj, verb=pverb, ...)
     }
     
     ## delete cloud
@@ -407,19 +451,20 @@ setMethod("rejuvinate", "dynaTree", rejuvinate.dynaTree)
       ## build the Rth model on a the random re-ordering
       if(verb > 0) cat("\nround ",  r, ":\n", sep="")
       obj2 <- dynaTree(X[o[,r],], y[o[,r]], N, model, nu0s20, ab, minp, sb,
-                       icept, rprop, verb)
+                       nstart, icept, rprop, verb)
 
       ## predict or perform sensitivity analysis
       if(!is.null(XX)) {
         if(is.character(XX) && XX == "sens")
-          obj2 <- sens.dynaTree(obj2, verb=pverb, ...)
+          obj2 <- sens.dynaTree(obj2, lhs=lhs, verb=pverb, ...)
         else obj2 <- predict(obj2, XX, yy, verb=pverb, ...)
       }
 
       ## maybe accumulate variable use proportions
-      if(varprop) {
+      if(varstats) {
         obj2$vpu <- varpropuse(obj2)
         obj2$vpt <- varproptotal(obj2)
+        obj2 <- relevance(obj2, verb=pverb, ...)
       }
 
       ## delete cloud
@@ -474,9 +519,10 @@ setMethod("rejuvinate", "dynaTree", rejuvinate.dynaTree)
       }
 
       ## combine the variable use bits
-      if(varprop) {
+      if(varstats) {
         obj$vpu <- rbind(obj$vpu, obj2$vpu)
         obj$vpt <- rbind(obj$vpt, obj2$vpt)
+        obj$relevance <- rbind(obj$relevance, obj2$relevance)
       }
     }
     
@@ -489,3 +535,36 @@ setMethod("rejuvinate", "dynaTree", rejuvinate.dynaTree)
     invisible(obj)
   }
 
+
+## intervals:
+##
+## returns the upper and lower bounds for the column
+## of all tree partitions used by any X[index,] in the object
+
+intervals.dynaTree <- function(object, index, var)
+  {
+    ## make sure object$num is defined
+    if(is.null(object$num)) stop("no cloud number in object")
+
+    ## check index
+    n <- nrow(object$X)
+    if(length(index) != 1 || index <= 0 || index > n)
+      stop("index must be scalar in  in 1:nrow(object$X)")
+
+    ## check var
+    m <- ncol(object$X)
+    if(length(var) != 1 || var < 1)
+      stop("var must be scalar >= 1 and <= ncol(X)")
+    if(object$icept == "augmented") var <- var + 1
+    if(var > m) stop("var must be scalar >= 1 and <= ncol(X)")
+
+    out <- .C("intervals_R",
+              cloud = as.integer(object$num),
+              index = as.integer(index),
+              var = as.integer(var),
+              a = double(object$N),
+              b = double(object$N),
+              PACKAGE = "dynaTree")
+
+    return(data.frame(a=out$a, b=out$b))
+  }

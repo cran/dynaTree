@@ -38,6 +38,7 @@
  */
 
 Pall *new_pall(double **X, unsigned int n, unsigned int m, 
+	       int *Xna, int **XNA, unsigned int nna, 
 	       double *y, double *params, int model_in)
 {
   /* copy parameters common to all particles */
@@ -57,6 +58,13 @@ Pall *new_pall(double **X, unsigned int n, unsigned int m,
   pall->smin = (unsigned int) params[5] - 1;
   pall->bmax = (unsigned int) params[6];
   pall->icept = (unsigned int) params[7];
+
+  /* deal with NAs */
+  pall->nna = nna;
+  if(nna > 0) {
+    pall->Xna = new_dup_ivector(Xna, n);
+    pall->XNA = new_dup_imatrix(XNA, nna, m);
+  } else { pall->Xna = NULL; pall->XNA = NULL; }
 
   /* determine the growing rectangle proposal typr */
   switch((int) params[8]) {
@@ -104,6 +112,11 @@ Pall *copy_pall(Pall *pold)
   pall->g = pold->g;
   pall->m = pold->m;
   pall->y = new_dup_vector(pold->y, pold->n);
+  pall->nna = pold->nna;
+  if(pold->Xna) pall->Xna = new_dup_ivector(pold->Xna, pold->n);
+  else pall->Xna = NULL;
+  if(pold->XNA) pall->XNA = new_dup_imatrix(pold->XNA, pold->nna, pold->m);
+  else pall->XNA = NULL;
   pall->nu0 = pold->nu0;
   pall->s20 = pold->s20;
   pall->a = pold->a;
@@ -131,6 +144,8 @@ Pall *copy_pall(Pall *pold)
 void delete_pall(Pall *pall)
 {
   delete_matrix(pall->X);
+  if(pall->Xna) free(pall->Xna);
+  if(pall->XNA) delete_imatrix(pall->XNA);
   free(pall->y);
   if(pall->bmaxv) free(pall->bmaxv);
   free(pall);
@@ -143,7 +158,8 @@ void delete_pall(Pall *pall)
  * add new rows to X and components to y
  */
 
-void add_data(Pall *pall, double **X, unsigned int n, double *y)
+void add_data(Pall *pall, double **X, unsigned int n, 
+	      int *Xna, int **XNA, unsigned int nna, double *y)
 {
   unsigned int i, nnew;
 
@@ -166,6 +182,30 @@ void add_data(Pall *pall, double **X, unsigned int n, double *y)
   /* and now the new y bits */
   dupv(pall->y+pall->n, y, n);
 
+  /* deal with NAs */
+  if(pall->Xna || Xna) {
+    int newXna = pall->Xna == NULL;
+    pall->Xna = realloc(pall->Xna, sizeof(int)*nnew);
+    if(newXna) for(unsigned int i=0; i<pall->n; i++) pall->Xna[i] = -1;
+    if(!Xna) for(unsigned int i=pall->n; i<nnew; i++) pall->Xna[i] = -1;
+    else { /* augment new Xnas >= 0 by previous nna count */
+      for(unsigned int i=0; i<n; i++) {
+	pall->Xna[i+pall->n] = Xna[i];
+	if(Xna[i] != -1) pall->Xna[i+pall->n] += pall->nna;
+      }
+    }
+    /* copy new NA indicator rows if there are new NAs */
+    if(XNA) {
+      pall->XNA = new_bigger_imatrix(pall->XNA, pall->nna + nna, 
+					   pall->m, nna, pall->m);
+      pall->nna += nna;
+    } assert(nna == 0);
+
+    /* BOBBY: delete this later */
+    printIVector(pall->Xna, nnew, stdout);
+    printIMatrix(pall->XNA, pall->nna, pall->m, stdout);
+  }
+
   /*  update n */
   pall->n = nnew;
 }
@@ -181,7 +221,9 @@ void add_data(Pall *pall, double **X, unsigned int n, double *y)
 void retire(Pall *pall, unsigned int index)
 {
   double **Xnew;
+  int **XNAnew;
   unsigned int k;
+  int xna;
 
   /* sanity check */
   assert(index < pall->n);
@@ -201,6 +243,37 @@ void retire(Pall *pall, unsigned int index)
   for(k=1; k<pall->n; k++) Xnew[k] = Xnew[k-1] + pall->m;
   pall->X = Xnew;
 
+  /* deal with NA entries */
+  if(pall->Xna) {
+    xna = pall->Xna[index];
+    /* maybe re-size XNA */
+    if(xna >= 0) {
+      (pall->nna)--;
+      if(pall->nna == 0) { /* no more NAs left */
+	delete_imatrix(pall->XNA); pall->XNA = NULL; 
+      } else {
+	if(xna < (int) pall->nna) /* move last into xna position */
+	  dupiv(pall->XNA[xna], pall->XNA[pall->nna], pall->m);
+	/* reduce the size of XNA */
+	/* BOBBY: NEED FUNCTION FOR THIS SINCE THIS IS DUPLICATED 
+	   FROM A FEW LINES ABOVE */
+	XNAnew = (int**) malloc(sizeof(int*) * pall->nna);
+	XNAnew[0] = (int*) realloc(pall->XNA[0], sizeof(int) * pall->nna * pall->m);
+	free(pall->XNA);
+	for(k=1; k<pall->nna; k++) XNAnew[k] = XNAnew[k-1] + pall->m;
+	pall->XNA = XNAnew;
+      }
+    }
+    
+    /* resize and reset the highest number in pall->Xna */
+    if(pall->nna > 0) {
+      if(index < (int) pall->n) pall->Xna[index] = pall->Xna[pall->n];
+      pall->Xna = (int*) realloc(pall->Xna, sizeof(int)*pall->n);
+      for(k=0; k<pall->n; k++) 
+	if(pall->Xna[k] == pall->nna) pall->Xna[k] = xna;
+    }
+  }
+
   /* keep track of the fact that we've removed an entry */
   (pall->g)++;
 }
@@ -215,23 +288,30 @@ void retire(Pall *pall, unsigned int index)
 void reorder(Pall *pall, int *o)
 {
   unsigned int i;
+  double **Xnew;
+  double *ynew;
+  int *Xnanew;
 
   /* sanity check */
   assert(o);
 
   /* allocate new space */
-  double **Xnew = new_matrix(pall->n, pall->m);
-  double *ynew = new_vector(pall->n);
+  Xnew = new_matrix(pall->n, pall->m);
+  ynew = new_vector(pall->n);
+  if(pall->Xna) Xnanew = new_ivector(pall->n);
+  else Xnanew = NULL;
 
   /* fill that space */
   for(i=0; i<pall->n; i++) {
     dupv(Xnew[o[i]], pall->X[i], pall->m);
     ynew[o[i]] = pall->y[i];
+    if(Xnanew) Xnanew[o[i]] = pall->Xna[i];
   }
 
   /* free old space and copy pointer */
   delete_matrix(pall->X); pall->X = Xnew;
   free(pall->y); pall->y = ynew;
+  if(Xnanew) { free(pall->Xna); pall->Xna = Xnanew; }
 }
 
 

@@ -70,17 +70,16 @@
 
     \item \code{shape}: Optional vector of shape parameters for Beta
     marginal distributions having length \code{ncol(object$X)} and
-    elements \code{> 1}. If specified, the uncertainty distribution
-    (i.e. the LHS) is proportional to a joint pdf formed by
-    independent Beta distributions in each dimension of the domain,
-    scaled and shifted to have support defined by \code{rect}.
-    Only concave Beta distributions with \code{shape} > 1 are
-    supported. If unspecified, the uncertainty distribution
-    is uniform over \code{rect}. The specification \code{shape[i]=0}
-    instructs \code{sens} to treat the i'th dimension as a binary 
-    variable. In this case, \code{mode[i]} is the probability
-    parameter for a bernoulli uncertainty distribution, and 
-    we must also have \code{rect[i,]=c(0,1)}.
+    elements \code{> 1}, i.e., concave Beta distributions. If
+    specified, the uncertainty distribution (i.e. the LHS) is
+    proportional to a joint pdf formed by independent Beta
+    distributions in each dimension of the domain, scaled and shifted
+    to have support defined by \code{rect}.  If unspecified, the
+    uncertainty distribution is uniform over \code{rect}. The
+    specification \code{shape[i]=0} instructs \code{sens} to treat the
+    i'th dimension as a binary variable. In this case, \code{mode[i]}
+    is the probability parameter for a bernoulli uncertainty
+    distribution, and we must also have \code{rect[i,]=c(0,1)}.
 
     \item \code{mode}: Optional vector of mode values for the Beta
     uncertainty distribution. Vector of length equal to the dimension
@@ -94,8 +93,8 @@
     which, if any, dimensions of the input space should be treated
     as categorical; this input is used to help set the default
     \code{lhs$shape} argument if not specified; the default \code{categ}
-    argument is \code{NULL} meaning that all inputs are treated as
-    real-valued in the sensitivity analysis
+    argument is \code{NULL} meaning that the categorical inputs
+    are derived from \code{object$X} in a sensible way
 }
 \item{verb}{
     a positive scalar integer indicating how many predictive locations
@@ -138,6 +137,8 @@
   uncertainty distribution, we can also estimate the main effects
   through simple non-parametric regression (a moving average).
 
+  See the Gramacy, Taddy, \& Wild (2011) reference below for more details.
+  
   If \code{method = "boot"} is used then simply replace LHS above
   with a bootstrap resample of the \code{object$X} locations.
 
@@ -175,10 +176,10 @@
   \emph{Making best use of model evaluations to compute sensitivity indices.}
   Computer Physics Communications, 145, 280-297.
 
- Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
-  \dQuote{Dynamic trees for learning and design}
-  Journal of the American Statistical Association, 106(493), pp. 109-123;
-  arXiv:0912.1636
+  Gramacy, R.B., Taddy, M.A., and S. Wild (2011).
+ \dQuote{Variable Selection and Sensitivity Analysis via
+   Dynamic Trees with an Application to Computer Code Performance Tuning}
+  arXiv:1108.4739
   
   \url{http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html}
 }
@@ -198,16 +199,29 @@
 
 \seealso{
   \code{\link{dynaTree}}, \code{\link{predict.dynaTree}},
+  \code{\link{relevance.dynaTree}}, 
+  \code{\link{varpropuse}}, \code{\link{varproptotal}}
 }
 \examples{
 ## friedman data
 library(tgp)
 f <- friedman.1.data(1000)
-X <- f[,1:6]##c(3,4,5,1,2,6:10)]
+X <- f[,1:6]
 Z <- f$Y
 
 ## fit the model and do the sensitivity analysis
-out <- dynaTree(X=X, y=Z, N=1000, ab=c(0.01,2), model="linear")
+out <- dynaTree(X=X, y=Z, N=1000, ab=c(0.01,2))
+## also try with model="linear"
+
+## gather relevance statistics
+out <- relevance(out)
+boxplot(out$relevance)
+abline(h=0, col=2, lty=2)
+## relevance stats are not as useful when model="linear"
+## since it will appear that x4 and x5 not helpful; these
+## interact linearly with the response
+
+## full simulation-based sensitivity analysis
 out <- sens.dynaTree(out, verb=100)
 
 ## plot the main effects
@@ -230,46 +244,16 @@ if(ncol(out$X) > 1) {
 par(mfrow=c(1,2), mar=c(5,4,4,2))
 boxplot(out$S, main="first order indices", xlab="inputs")
 boxplot(out$T, main="total indices", xlab="inputs")
+## these look better when model="linear"
 
 ## clean up
 deletecloud(out)
 
-## now a classification example using the sensitivity hooks
-## available through the dynaTrees function
-
-## predictive locations and true classes
-## for comparisons
-library(plgp)
-xx <- seq(-2, 2, length=20)
-XX <- expand.grid(xx, xx)
-X <- dopt.gp(125, Xcand=XX)$XX
-C <- exp2d.C(X)
-
-## now compare to repetition on a fixed design
-objR <- dynaTrees(X, C, XX="sens", model="class", R=3)
-
-## plot main effects and Sobol indices for all classes
-Cs <- sort(unique(C))
-par(mfrow=c(length(Cs), 3))
-for(cls in Cs) {
-  plot(objR$MEgrid[,1], objR$MEmean[[cls]][,1], type="l",
-       main=paste("class", cls, "main effects"), ylab="main effect",
-       xlab="x", ylim=c(0,1))
-  lines(objR$MEgrid[,1], objR$MEq1[[cls]][,1], type="l", lty=2)
-  lines(objR$MEgrid[,1], objR$MEq2[[cls]][,1], type="l", lty=2)
-  lines(objR$MEgrid[,2], objR$MEmean[[cls]][,2], type="l", col=2)
-  lines(objR$MEgrid[,2], objR$MEq1[[cls]][,2], type="l", col=2, lty=2)
-  lines(objR$MEgrid[,2], objR$MEq2[[cls]][,2], type="l", col=2, lty=2)
-  boxplot(objR$S[[cls]], main=paste("class", cls, "S indices"), ylim=c(0,1))
-  boxplot(objR$T[[cls]], main=paste("class", cls, "T indices"), ylim=c(0,1))
-}
-
-## no need to clean up from dynaTrees
+## for a classification example using the sensitivity hooks
+## in the dynaTrees function,  see the class2d demo
+## i.e., demo("class2d")
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
 \keyword{ methods }
 \keyword{ htest }
-\keyword{ multivariate }
-\keyword{ regression }
-\keyword{ tree }

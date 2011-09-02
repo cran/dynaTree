@@ -171,9 +171,13 @@ double Cloud::Resample(unsigned int t, unsigned int verb)
   /* sanity check */
   assert(t < pall->n);
 
+  /* special handling for missing data */
+  int *xna = NULL;
+  if(pall->Xna && pall->Xna[t] >= 0) xna = pall->XNA[pall->Xna[t]];
+
   /* calculate predictive probabilites and gather statistics */
   for(unsigned int i=0; i<N; i++) {
-    prob[i] = particle[i]->PostPred(pall->X[t], pall->y[t]);
+    prob[i] = particle[i]->PostPred(pall->X[t], pall->y[t], xna);
     pred += prob[i];
   }
 
@@ -181,8 +185,11 @@ double Cloud::Resample(unsigned int t, unsigned int verb)
   prob_var = norm_weights(prob, N);
   
   /* resample particles */
-  unsigned int np = Resample();
-  
+  unsigned int np = N; /* no need to resample if all particles
+			  are the same for new data */
+  /* only PROBLEM with this is Nrevert via rejuvinate */
+  if(prob_var > 0) np = Resample();
+
   /* print progress meter */
   if(verb > 0 && (t+1+pall->g) % verb == 0){
 
@@ -342,6 +349,26 @@ void Cloud::Retire(int *pretire, unsigned int nretire, double lambda,
     for(unsigned int j=i+1; j<nretire; j++) 
       if(pretire[j] == (int) pall->n) { pretire[j] = pretire[i]; break; }
   }
+}
+
+
+/*
+ * Intervals:
+ *
+ * extracts the intervals (rectangle bounds) for X[index,var]
+ * in the particle cloud
+ */
+
+
+void Cloud::Intervals(unsigned int index, unsigned int var, double *a, double *b)
+{
+  /* sanity check */
+  assert(index < pall->n);
+  assert(var < pall->m);
+
+  for(unsigned int p=0; p<N; p++) 
+    particle[p]->Interval(index, var, a+p, b+p);
+
 }
 
 
@@ -734,7 +761,7 @@ void Cloud::ALC(double **XX, unsigned int nn, double **Xref,
  */
 
 void Cloud::ALC(double **XX, unsigned int nn, double **rect,
-		double *alc_out, unsigned int verb)
+		int *cat, bool approx, double *alc_out, unsigned int verb)
 {
   /* initialize */
   zerov(alc_out, nn);
@@ -745,14 +772,17 @@ void Cloud::ALC(double **XX, unsigned int nn, double **rect,
       myprintf(stdout, "prediction %d of %d done\n", i+1, N);
       myflush(stdout);
     }
-    particle[i]->ALC(XX, nn, rect, alc_out);
+    particle[i]->ALC(XX, nn, rect, cat, approx, alc_out);
   }
 
   /* calculate the area of the rectangle for normalization */
   double area = 1.0;
-  for(unsigned int j=0; j<pall->bmax; j++) {
-    if(rect[1][j] - rect[0][j] < DOUBLE_EPS) continue;
-    area *= rect[1][j] - rect[0][j];
+  if(approx) area = (double) (pall->n + pall->g); 
+  else {
+    for(unsigned int j=0; j<pall->bmax; j++) {
+      if(cat[j] || rect[1][j] - rect[0][j] < DOUBLE_EPS) continue;
+      area *= rect[1][j] - rect[0][j];
+    }
   }
 
   /* now average over the number of particles, and normalize */
@@ -769,7 +799,8 @@ void Cloud::ALC(double **XX, unsigned int nn, double **rect,
  * n-vector alc_out
  */
 
-void Cloud::ALC(double **rect, double *alc_out, unsigned int verb)
+void Cloud::ALC(double **rect, int *cat, bool approx, double *alc_out,
+		unsigned int verb)
 {
   /* initialize */
   zerov(alc_out, pall->n);
@@ -780,20 +811,57 @@ void Cloud::ALC(double **rect, double *alc_out, unsigned int verb)
       myprintf(stdout, "prediction %d of %d done\n", i+1, N);
       myflush(stdout);
     }
-    particle[i]->ALC(rect, alc_out);
+    particle[i]->ALC(rect, cat, approx, alc_out);
   }
 
   /* calculate the area of the rectangle for normalization */
-  double area = 1.0;
-  for(unsigned int j=0; j<pall->bmax; j++) {
-    if(rect[1][j] - rect[0][j] < DOUBLE_EPS) continue;
-    area *= rect[1][j] - rect[0][j];
+  double area = 1.0; 
+  if(approx) area = (double) (pall->n + pall->g);
+  else {
+    for(unsigned int j=0; j<pall->bmax; j++) {
+      if(cat[j] || rect[1][j] - rect[0][j] < DOUBLE_EPS) continue;
+      area *= rect[1][j] - rect[0][j];
+    } 
   }
 
   /* now average over the number of particles, and normalize */
   scalev(alc_out, pall->n, 1.0/(((double) N)*area));
 }
 
+
+/*
+ * Relevance:
+ *
+ * sample the reduction in Average Variance statistic by integrating 
+ * over the rectangle of reference locations, and return; i.e., calculate
+ * the partial dependencies
+ */
+
+void Cloud::Relevance(double **rect, int *cat, bool approx, double **delta, 
+		   unsigned int verb)
+{
+  /* get ALC at XX locations for each particle */
+  for(unsigned int i=0; i<N; i++) {
+    if(verb > 0 && (i+1) % verb == 0) {
+      myprintf(stdout, "relevance %d of %d done\n", i+1, N);
+      myflush(stdout);
+    }
+    particle[i]->Relevance(rect, cat, approx, delta[i]);
+  }
+
+  /* calculate the area of the rectangle for normalization */
+  double area = 1.0;
+  if(approx) area = (double) (pall->n + pall->g);
+  else {
+    for(unsigned int j=0; j<pall->bmax; j++) {
+      if(cat[j] || rect[1][j] - rect[0][j] < DOUBLE_EPS) continue;
+      area *= rect[1][j] - rect[0][j];
+    }
+  }
+
+  /* now average over the number of particles, and normalize */
+  scalev(*delta, N*(pall->m), 1.0/area);
+}
 
 /*
  * Entropy:

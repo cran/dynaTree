@@ -1,4 +1,6 @@
-class2d                 classification on simple 2-d data
-design                  sequential design for regression on 1-d data
-fried			RMSE comparison on Friedman 5-d data
-reg1d			regression on simple 1-d data
+class2d		classification on 2-d data, with sens and relevance
+design		sequential design for regression on 1-d data
+elec2		4-d online inference comparison under drift
+fried 		RMSE comparison on Friedman 5-d data
+online		retirement for online inference of massive data
+reg1d		regression on simple 1-d data

@@ -193,7 +193,7 @@ ieci.dynaTree <- function(object, XX, Xref=NULL, probs=NULL, verb=0)
     if(object$icept == "augmented") XX <- cbind(rep(1,nn), XX)
     if(ncol(XX) != object$m) stop("XX has bad dimensions");
     
-    ## checking Xref and rect
+    ## checking Xref
     if(!is.null(Xref)) { ## numerical ALC with Xref
 
       ## check formatting of Xref
@@ -246,15 +246,16 @@ setMethod("ieci", "dynaTree", ieci.dynaTree)
 ##
 ## alc calculation at new XX locations based on reference
 ## locations in Xref, or an analytic calculation using a
-## rectangle in Xref (when rect=TRUE) -- uses the existing
-## obj$num C-side cloud which must not have been deleted
+## rectangle in Xref -- uses the existing obj$num C-side
+## cloud which must not have been deleted
 
 setGeneric("alc",
             function(object, ...)
             standardGeneric("alc")
             )
 
-alc.dynaTree <- function(object, XX, rect=NULL, Xref=NULL, probs=NULL, verb=0)
+alc.dynaTree <- function(object, XX, rect=NULL, categ=NULL, approx=FALSE,
+                         Xref=NULL, probs=NULL, verb=0)
   {
     ## for timing purposes
     ## p1 <- proc.time()[3]
@@ -276,6 +277,7 @@ alc.dynaTree <- function(object, XX, rect=NULL, Xref=NULL, probs=NULL, verb=0)
 
       ## sanity check
       if(!is.null(rect)) stop("Xref only valid when rect is NULL")
+      if(!is.null(categ)) stop("categ not valid with Xref")
 
       ## check formatting of Xref
       if(is.null(nrow(Xref))) Xref <- matrix(Xref, ncol=1)
@@ -287,21 +289,54 @@ alc.dynaTree <- function(object, XX, rect=NULL, Xref=NULL, probs=NULL, verb=0)
 
     } else if(length(rect) == 1 && rect == FALSE) {
       nref <- 0 ## using XX as Xref
-    } else {
+      if(!is.null(categ)) stop("categ not valid with Xref=XX")
+      if(approx) stop("approx not valid with Xref=XX")
+    } else { ## using analytic calculation via rectangle
       ## sanity check
       if(!is.null(probs)) stop("must use Xref to use probs")
+
+      ## default categ argument
+      X <- as.matrix(object$X)
+      d <- ncol(X)
+      if(is.null(categ)) categ <- apply(X, 2, function(x) { setequal(unique(x), c(0,1)) })
+      else if(object$icept == "augmented") categ <- c(FALSE, categ)
+      if(verb > 0) cat("categorical inputs:", paste(((1:d)[categ]), sep=" "), "\n")
+
+      ## check categ argument (not sure about the second check)
+      if(length(categ) != d && ! is.logical(categ))
+        stop("categ should be NULL or a length-d logical vector")
       
-      ## Xref is null, using rect
+      ## extract/check the vitals of rect
       if(is.null(rect)) ## automatic rect
-        rect <- t(apply(rbind(object$X, XX), 2, range)) 
+        rect <- t(apply(rbind(X, XX), 2, range)) ## combining with XX here is unique
       else { ## specified rect
         if(is.null(nrow(rect))) rect <- matrix(rect, nrow=1)
         if(object$icept == "augmented") rect <- rbind(rep(1,2), rect)
       }
       
       ## post sanity check
-      if(ncol(rect) != 2 && nrow(rect) != object$m)
-        stop("rect has bad dimensions")
+      if(ncol(rect) != 2 && nrow(rect) != d) stop("rect has bad dimensions")
+      if(any(rect[,2] < rect[,1])) stop("rect has reversed boundaries")
+
+      ## check rect in the categorical variable context
+      for(i in 1:d){
+        if(categ[i] == TRUE){
+          if(rect[i,1] != 0 || rect[i,2] != 1){
+            print(rect[i,])
+            stop(paste("rect must be [0,1] for cat inputs (i=", i,")", sep=""))
+          }
+        }
+      }
+
+      ## check for possible numerical problems in area calculations
+      if(length(approx) != 1 || !is.logical(approx))
+        stop("approx should be a scalar logical")
+      if(!approx) {
+        A <- prod(rect[!categ,2] - rect[!categ,1])
+        if(A > 1/sqrt(.Machine$double.eps))
+          warning("area of bounding rectangle is very large; suggest approx=TRUE or transform data",
+                  immediate.=TRUE)
+      }
       
       ## for sending to C
       nref <- -1; Xref <- rect 
@@ -320,6 +355,8 @@ alc.dynaTree <- function(object, XX, rect=NULL, Xref=NULL, probs=NULL, verb=0)
                nn = as.integer(nn),
                Xref = as.double(Xref), 
                nref = as.integer(nref),
+               categ = as.integer(categ),
+               approx = as.integer(approx),
                probs = as.double(probs),
                verb = as.integer(verb),
                alc = double(nn),
@@ -330,7 +367,8 @@ alc.dynaTree <- function(object, XX, rect=NULL, Xref=NULL, probs=NULL, verb=0)
 
     ## put originals back
     object$XX <- XX
-    object$Xref <- Xref
+    object$Xref <- Xref  ## which may be rect
+    object$categ <- categ
     if(!is.null(probs)) object$probs <- t(probs)
 
     ## update time
@@ -355,35 +393,77 @@ setGeneric("alcX",
             standardGeneric("alcX")
             )
 
-alcX.dynaTree <- function(object, rect=NULL, verb=0)
+alcX.dynaTree <- function(object, rect=NULL, categ=NULL, approx=FALSE, verb=0)
   {
     ## make sure object$num is defined
-    if(is.null(object$num)) stop("no could number in object")
+    if(is.null(object$num)) stop("no cloud number in object")
     
     ## for timing purposes
     p1 <- proc.time()[3]
+
+    ## must use something else for classification
+    if(object$model == "class") stop("not for use with classification models")
+
+    ## default categ argument
+    X <- as.matrix(object$X)
+    d <- ncol(X)
+    if(is.null(categ)) categ <- apply(X, 2, function(x) { setequal(unique(x), c(0,1)) })
+    else if(object$icept == "augmented") categ <- c(FALSE, categ)
+    if(verb > 0) cat("categorical inputs:", paste(((1:d)[categ]), sep=" "), "\n")
+    
+    ## check categ argument (not sure about the second check)
+    if(length(categ) != d && ! is.logical(categ))
+      stop("categ should be NULL or a length-d logical vector")
     
     ## extract/check the vitals of rect
-    if(object$model == "class") stop("not for use with classification models")
-    if(is.null(rect)) rect <- t(apply(object$X, 2, range)) ## automatic rect
+    if(is.null(rect)) rect <- t(apply(X, 2, range)) ## automatic rect
     else { ## specified rect
       if(is.null(nrow(rect))) rect <- matrix(rect, nrow=1)
       if(object$icept == "augmented") rect <- rbind(rep(1,2), rect)
     }
-    if(ncol(rect) != 2 && nrow(rect) != object$m)
-      stop("rect has bad dimensions");
+    ## final sanity checks
+    if(ncol(rect) != 2 && nrow(rect) != object$m) stop("rect has bad dimensions")
+    if(any(rect[,2] < rect[,1])) stop("rect has reversed boundaries")
 
+    ## check rect in the categorical variable context
+    for(i in 1:d){
+      if(categ[i] == TRUE){
+        if(rect[i,1] != 0 || rect[i,2] != 1){
+          print(rect[i,])
+          stop(paste("rect must be [0,1] for cat inputs (i=", i,")", sep=""))
+        }
+      }
+    }
+
+    ## check for possible numerical problems in area calculations
+    if(length(approx) != 1 || !is.logical(approx))
+      stop("approx should be a scalar logical")
+    if(!approx) {
+      A <- prod(rect[!categ,2] - rect[!categ,1])
+      if(A > 1/sqrt(.Machine$double.eps))
+        warning("area of bounding rectangle is very large; suggest approx=TRUE or transform data",
+                immediate.=TRUE)
+    }
+
+    ## check that approx isn't changing from last time
+    if(!is.null(object$alcX) && approx != object$approx)
+      stop("must re-initialize object to change approx")
+    
     ## call the C-side predict routine
     pred <- .C("alcX_R",
                cloud = as.integer(object$num),
                rect = as.double(rect),
+               categ = as.integer(categ),
+               approx = as.integer(approx),
                verb = as.integer(verb),
-               alcX = double(nrow(object$X)),
+               alcX = double(nrow(X)),
                PACKAGE = "dynaTree")
       
     ## combine pred with object
     object$alcX <- pred$alcX
     object$rect <- rect
+    object$categ <- categ
+    object$approx <- approx
 
     ## update time
     object$time <- object$time + proc.time()[3] - p1
@@ -393,6 +473,98 @@ alcX.dynaTree <- function(object, rect=NULL, verb=0)
   }
 
 setMethod("alcX", "dynaTree", alcX.dynaTree)
+
+
+
+## relevance.dynaTree:
+##
+## calculate the average reduction in variance statistic,
+## i.e., the partial dependencies of the input coordinates,
+## for each leaf split in the tree of every particle 
+## based on a rectangle of reference locations; 
+## uses the existing obj$num C-side cloud which
+## must not have been deleted
+
+setGeneric("relevance",
+            function(object, ...)
+            standardGeneric("relevance")
+            )
+
+relevance.dynaTree <- function(object, rect=NULL, categ=NULL, approx=FALSE, verb=0)
+  {
+    ## make sure object$num is defined
+    if(is.null(object$num)) stop("no cloud number in object")
+    
+    ## for timing purposes
+    p1 <- proc.time()[3]
+
+    ## default categ argument
+    X <- as.matrix(object$X)
+    d <- ncol(X)
+    if(is.null(categ)) categ <- apply(X, 2, function(x) { setequal(unique(x), c(0,1)) })
+    else if(object$icept == "augmented") categ <- c(FALSE, categ)
+    if(any(categ) && verb > 0)
+      cat("categorical inputs:", paste(((1:d)[categ]), sep=" "), "\n")
+    
+    ## check categ argument (not sure about the second check)
+    if(length(categ) != d && ! is.logical(categ))
+      stop("categ should be NULL or a length-d logical vector")
+
+    ## extract/check the vitals of rect
+    if(is.null(rect)) rect <- t(apply(X, 2, range)) ## automatic rect
+    else { ## specified rect
+      if(is.null(nrow(rect))) rect <- matrix(rect, nrow=1)
+      if(object$icept == "augmented") rect <- rbind(rep(1,2), rect)
+    }
+    ## final sanity checks
+    if(ncol(rect) != 2 && nrow(rect) != d) stop("rect has bad dimensions")
+    if(any(rect[,2] < rect[,1])) stop("rect has reversed boundaries")
+
+    ## check rect in the categorical variable context
+    for(i in 1:d){
+      if(categ[i] == TRUE){
+        if(rect[i,1] != 0 || rect[i,2] != 1){
+          print(rect[i,])
+          stop(paste("rect must be [0,1] for cat inputs (i=", i,")", sep=""))
+        }
+      }
+    }
+
+    ## check for possible numerical problems in area calculations
+    if(length(approx) != 1 || !is.logical(approx))
+      stop("approx should be a scalar logical")
+    if(!approx) {
+      A <- prod(rect[!categ,2] - rect[!categ,1])
+      if(A > 1/sqrt(.Machine$double.eps))
+        warning("area of bounding rectangle is very large; suggest approx=TRUE or transform data",
+                immediate.=TRUE)
+    }
+      
+    ## call the C-side predict routine
+    pred <- .C("relevance_R",
+               cloud = as.integer(object$num),
+               rect = as.double(rect),
+               categ = as.integer(categ),
+               approx = as.integer(approx),
+               verb = as.integer(verb),
+               delta = double(object$N * d),
+               PACKAGE = "dynaTree")
+      
+    ## combine pred with object
+    dn <- list(NULL, colnames(X))
+    object$relevance <- matrix(pred$delta, ncol=d, byrow=TRUE, dimnames=dn)
+    object$rect <- rect
+    object$categ <- categ
+    object$approx <- approx
+    
+    ## update time
+    object$time <- object$time + proc.time()[3] - p1
+    
+    ## return
+    invisible(object)
+  }
+
+setMethod("relevance", "dynaTree", relevance.dynaTree)
 
 
 ## entropyX.dynaTree:
@@ -414,7 +586,7 @@ entropyX.dynaTree <- function(object, verb=0)
     ## for timing purposes
     p1 <- proc.time()[3]
     
-    ## extract/check the vitals of rect
+    ## sanity check
     if(object$model != "class") stop("only used by classification models")
 
     ## call the C-side predict routine
@@ -476,9 +648,10 @@ sens.dynaTree <- function(object, class=NULL, nns=1000, nME=100, span=0.3,
     }
     
     ## default categ argument
-    if(is.null(categ)) {
-      categ <- apply(X, 2, function(x) { setequal(unique(x), c(0,1)) })      
-    } else if(verb > 0) { cat("treating as categorical:\n"); print(categ) } 
+    if(is.null(categ)) categ <- apply(X, 2, function(x) { setequal(unique(x), c(0,1)) })
+    else if(object$icept == "augmented") categ <- c(FALSE, categ)
+    if(any(categ) && verb > 0)
+      cat("categorical inputs:", paste(((1:d)[categ]), sep=" "), "\n")
     
     ## check categ argument (not sure about the second check)
     if(length(categ) != d && ! is.logical(categ))
@@ -494,9 +667,14 @@ sens.dynaTree <- function(object, class=NULL, nns=1000, nME=100, span=0.3,
     if(method == "lhs") {
       
       ## process the rect argument
-      if(is.null(lhs$rect)) lhs$rect <- apply(X,2,range)
+      if(is.null(lhs$rect)) lhs$rect <- t(apply(X,2,range))
       else if(nrow(lhs$rect) != d || ncol(lhs$rect) != 2)
-        stop(paste("rect should be a ", d, "x2-vector", sep=""))
+        stop(paste("rect should be a ", d, "x2-matrix", sep=""))
+      ## sanity check
+      if(any(lhs$rect[,2] < lhs$rect[,1])) {
+        print(lhs$rect)
+        stop("lhs$rect has reversed boundaries")
+      }
       
       ## check the shape LHS parameter vector
       if(is.null(lhs$shape)) lhs$shape <- as.numeric(!categ)
@@ -515,27 +693,23 @@ sens.dynaTree <- function(object, class=NULL, nns=1000, nME=100, span=0.3,
       ## check the LHS rectangle in the categorical variable context
       for(i in 1:d){
         if(categ[i] == TRUE){
-          if(lhs$rect[1,i] != 0 || lhs$rect[2,i] != 1){
+          if(lhs$rect[i,1] != 0 || lhs$rect[i,2] != 1){
             print(lhs$rect[i,])
-            stop(paste("lhs$rect must be [0,1] for categorical variables (i=",
-                       i,", lhs$shape[i]=", lhs$shape[i],").", sep=""))
+            stop(paste("lhs$rect must be [0,1] for cat inputs (i=", i,")", sep=""))
           }
           if(any(lhs$shape[categ] != 0)) 
             stop("shape must be zero for categorical inputs")
         }
       }
-      
-      ## transpose rect
-      lhs$rect <- t(lhs$rect)
     }
     
     ## check span and create Main Effect grid
     if(length(span) != 1 || ((span > 1) || (span < 0)))
       stop("Bad smoothing span; must be scalar in (0,1).")
     MEgrid <- matrix(ncol=d, nrow=nME)
-    if(! is.null(lhs$rect)) MErect <- t(lhs$rect)
-    else MErect <- apply(X,2,range)
-    for(i in 1:d){ MEgrid[,i] <- seq(MErect[1,i], MErect[2,i], length=nME) }
+    if(! is.null(lhs$rect)) MErect <- lhs$rect
+    else MErect <- t(apply(X,2,range))
+    for(i in 1:d){ MEgrid[,i] <- seq(MErect[i,1], MErect[i,2], length=nME) }
     
     ## checks for classification
     if(object$model == "class") {
@@ -612,6 +786,7 @@ sens.dynaTree <- function(object, class=NULL, nns=1000, nME=100, span=0.3,
     ## remember which classes sens was used on, if any
     if(all(class != -1)) object$sens.class <- class
     object$MEgrid <- MEgrid
+    object$categ <- categ
     colnames(object$MEgrid) <- dn[[2]]
     
     ## assign class and return
@@ -690,12 +865,15 @@ getBF <- function(obj1, obj2)
   
   ## sanity check
   if(obj1$R != obj2$R) stop("obj1$R != obj2$R")
-  if(nrow(obj1$X) != nrow(obj2$X))
-    stop("number of rows does not match")
+  l1 <- nrow(obj1$lpred)
+  if(is.null(l1)) l1 <- length(obj1$lpred)
+  l2 <- nrow(obj2$lpred)
+  if(is.null(l2)) l2 <- length(obj2$lpred)
+  if(l1 != l2) stop("number of rows does not match")
 
   ## extract lpred and build BF (for repeats)
   R <- obj1$R
-  bf <- matrix(0, nrow=nrow(obj1$X), ncol=R)
+  bf <- matrix(0, nrow=l2, ncol=R)
   lp1 <- matrix(obj1$lpred, ncol=R)
   lp2 <- matrix(obj2$lpred, ncol=R)
 

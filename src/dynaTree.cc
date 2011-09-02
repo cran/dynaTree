@@ -36,7 +36,10 @@ extern "C" {
 unsigned int NC = 0;
 Cloud **clouds = NULL;
 
+/* useful prototypes */
 unsigned int get_cloud(void);
+  int ** alloc_XNA(unsigned int T, unsigned int m, double **X, 
+		   int *Xna_in, int *XNA_in, unsigned int *nna);
 
 /*
  * dynaTree_R:
@@ -53,9 +56,12 @@ void dynaTree_R(/* inputs */
 		int* T_in,
 		int* N_in,
 		double* X_in,
+		int *Xna_in,
+		int *XNA_in,
 		double* y_in,
 		int* model_in,
 		double* params_in,
+		int *nstart_in,
 		int *verb_in,
 		
 		/* outputs */
@@ -70,16 +76,21 @@ void dynaTree_R(/* inputs */
   unsigned int N = (unsigned int) *N_in;
   double **X = new_matrix_bones(X_in, T, m);
   double *y = new_dup_vector(y_in, T);
-  Pall *pall = new_pall(X, T, m, y, params_in, *model_in);
+  
+  /* any missing data (?) */
+  unsigned int nna = 0;
+  int ** XNA = alloc_XNA(T, m, X, Xna_in, XNA_in, &nna);
+
+  /* make new Pall */
+  Pall *pall = new_pall(X, T, m, Xna_in, XNA, nna, 
+			y, params_in, *model_in);
 
   /* verbosity argument */
   unsigned int verb = *verb_in;
 
-  /* minimum parition size */
-  unsigned int minp = (int) params_in[4];
-
   /* choose starting indices and bounding rectangle */
-  unsigned int nstart = minp; // no possible splits until 2*minp
+  unsigned int nstart = *nstart_in; 
+  assert(nstart >= (unsigned int) params_in[4]);
   if(nstart >= T) nstart = T-1;
   int *pstart = iseq(0,nstart-1);
   
@@ -109,6 +120,7 @@ void dynaTree_R(/* inputs */
 
   /* free data */
   free(X);
+  if(XNA) free(XNA);
   free(y);
 
   /* return to R */
@@ -118,14 +130,14 @@ void dynaTree_R(/* inputs */
 
 
 /*
- * rejuvinate_R:
+ * rejuvenate_R:
  *
  * create a new particle cloud from an old pall object,
  * obtained from a different cloud -- and then combine
  * the particle clouds
  */
 
-void rejuvinate_R(/* inputs */
+void rejuvenate_R(/* inputs */
 		int* c_in,
 		int *o_in,
 		int *n_in,
@@ -142,11 +154,8 @@ void rejuvinate_R(/* inputs */
     error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
 
-  /* info from pall */
-  unsigned int minp = cloud->pall->minp;
-  unsigned int T = cloud->pall->n;
-
   /* sanity check */
+  unsigned int T = cloud->pall->n;
   if(*n_in > 0) assert(*n_in == (int) T);
   else assert(!o_in);
 
@@ -154,12 +163,12 @@ void rejuvinate_R(/* inputs */
   if(o_in) cloud->Reorder(o_in);
 
   /* choose starting indices and bounding rectangle */
-  unsigned int nstart = minp; // no possible splits until 2*minp
+  unsigned int nstart = cloud->pall->minp; // no possible splits until 2*minp
   if(nstart >= T) nstart = T-1;
   int *pstart = iseq(0,nstart-1);
   
   /* print something? */
-  if(*verb_in > 0) myprintf(stdout, "rejuvinating\n");
+  if(*verb_in > 0) myprintf(stdout, "rejuvenating\n");
 
   /* allocate a new particle cloud */
   Cloud *newcloud = new Cloud(cloud->Nrevert, cloud->pall, pstart, nstart);
@@ -206,6 +215,8 @@ void update_R(/* inputs */
 	      int* m_in,
 	      int* T_in,
 	      double* X_in,
+	      int *Xna_in,
+	      int *XNA_in,
 	      double* y_in,
 	      int *verb_in,
 	      
@@ -227,12 +238,16 @@ void update_R(/* inputs */
   double **X = new_matrix_bones(X_in, T, m);
   double *y = new_dup_vector(y_in, T);
 
+  /* any missing data (?) */
+  unsigned int nna = 0;
+  int ** XNA = alloc_XNA(T, m, X, Xna_in, XNA_in, &nna);
+
   /* verbosity argument */
   unsigned int verb = *verb_in;
 
   /* add the data and get start/end times */
   unsigned int nstart = cloud->pall->n;
-  add_data(cloud->pall, X, T, y);
+  add_data(cloud->pall, X, T, Xna_in, XNA, nna, y);
   T = cloud->pall->n;
   
   /* Particle Learning steps for each new data point */
@@ -250,6 +265,7 @@ void update_R(/* inputs */
 
   /* free data */
   free(X);
+  if(XNA) free(XNA);
   free(y);
 
   /* return to R */
@@ -290,6 +306,29 @@ void retire_R(/* inputs */
 
 
 /*
+ * intervals_R:
+ *
+ * R-interface to a routine that extracts the rectangle bounds
+ * for X[index,var] in the particle cloud
+ */
+
+void intervals_R(/* inputs */
+		 int *c_in,
+		 int *index_in,
+		 int *var_in,
+		 double *a_out,
+		 double *b_out)
+{
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+
+  cloud->Intervals((*index_in)-1, (*var_in)-1, a_out, b_out);
+}
+
+
+/*
  * predict_R:
  *
  * function to predict at new XX locations based on 
@@ -314,6 +353,8 @@ void predict_R(/* inputs */
 	       double *yypred_out,
 	       double *ei_out)
 {
+  /* IF MISSING DATA THEN NEED TO GET RANDOM SEED */
+
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
@@ -352,12 +393,16 @@ void alc_R(/* inputs */
 	   int *nn_in,
 	   double *Xref_in,
 	   int *nref_in,
+	   int *cat_in,
+	   int *approx_in,
 	   double *probs_in,
 	   int *verb_in,
 	       
 	   /* outputs */
 	   double *alc_out)
 {
+  /* IF MISSING DATA THEN NEED RANDOM SEED */
+
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
@@ -385,10 +430,14 @@ void alc_R(/* inputs */
     rect = new_matrix_bones(Xref_in, 2, m);
   else assert(Xref_in == NULL);
 
+  /* cat sanity check */
+  if(!rect) assert(!cat_in);
+  else assert(cat_in);
+
   /* deal with ALC */
   assert(alc_out);
   if(Xref) cloud->ALC(XX, nn, Xref, *nref_in, probs, alc_out, verb);
-  else if(rect) cloud->ALC(XX, nn, rect, alc_out, verb);
+  else if(rect) cloud->ALC(XX, nn, rect, cat_in, (bool) *approx_in, alc_out, verb);
   else cloud->ALC(XX, nn, XX, nn, probs, alc_out, verb);
 
   /* clean up ALC predictive data */
@@ -419,6 +468,8 @@ void ieci_R(/* inputs */
 	   /* outputs */
 	   double *ieci_out)
 {
+  /* IF MISSING DATA THEN NEED RANDOM SEED */
+
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
@@ -466,6 +517,8 @@ void ieci_R(/* inputs */
 void alcX_R(/* inputs */
 	       int *c_in,
 	       double *rect_in,
+	       int *cat_in,
+	       int *approx_in,
 	       int *verb_in,
 	       
  	       /* outputs */
@@ -484,14 +537,59 @@ void alcX_R(/* inputs */
   assert(rect_in);
   double ** rect = new_matrix_bones(rect_in, 2, m);
   assert(alc_out != NULL);
+  assert(cat_in);
 
   /* calculate ALC */
-  cloud->ALC(rect, alc_out, verb);
+  cloud->ALC(rect, cat_in, (bool) *approx_in, alc_out, verb);
 
   /* free data */
   free(rect);
 }
 
+
+/*
+ * relevance_R:
+ *
+ * function to calculate the average variance 
+ * by integrating over a bounding rectangle, i.e., 
+ * calculate the partial dependencies for each 
+ * in put direction
+ * 
+ */
+
+void relevance_R(/* inputs */
+		   int *c_in,
+		   double *rect_in,
+		   int *cat_in,
+		   int *approx_in,
+		   int *verb_in,
+		   
+		   /* outputs */
+		   double *delta_out)
+{
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+  unsigned int m = cloud->pall->m;
+
+  /* verbosity argument */
+  unsigned int verb = *verb_in;
+  
+  /* matrix pointers */
+  assert(delta_out);
+  double **delta = new_matrix_bones(delta_out, cloud->N, cloud->pall->m);
+  assert(rect_in);
+  double **rect = new_matrix_bones(rect_in, 2, m);
+
+  /* calculate ALC */
+  cloud->Relevance(rect, cat_in, (bool) *approx_in, delta, verb);
+
+  /* free data */
+  free(rect);
+  free(delta);
+}
 
 /*
  * entropyX_R:
@@ -545,6 +643,8 @@ void predclass_R(/* inputs */
 		 double *yypred_out,
 		 double *entropy_out)
 {
+  /* IF MISSING DATA THEN NEED RANDOM SEED */
+
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
@@ -590,6 +690,8 @@ void classprobs_R(/* inputs */
 		  double *p_out,
 		  double *cs_out)
 {
+  /* IF MISSING DATA THEN NEED RANDOM SEED */
+
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
@@ -851,5 +953,45 @@ void delete_clouds_R(void)
 }
 
 
+/*
+ * alloc_XNA:
+ *
+ * read Xna_in and XNA_in to create to count the number
+ * of missing, NA, entries and allocate the nna * m indicator
+ * matrix of missingness
+ */
+
+int ** alloc_XNA(unsigned int T, unsigned int m, double **X, 
+		 int *Xna_in, int *XNA_in, unsigned int *nna)
+{
+  int **XNA = NULL;
+  *nna = 0;
+
+  /* calculating the dimensions of XNA */
+  if(Xna_in) {
+    for(unsigned int i=0; i<T; i++) {
+      if(Xna_in[i] == 0) Xna_in[i] = -1;
+      else { Xna_in[i] = *nna; (*nna)++; }
+    }
+
+    /* allocating full matrix XNA */
+    XNA = new_imatrix_bones(XNA_in, *nna, m);
+
+    /* put Infs in missing values of X */
+    /* while sanity checking XNA versus X entries */
+    for(unsigned int i=0; i<T; i++) {
+      if(Xna_in[i] >= 0) {
+	for(unsigned int j=0; j<m; j++) {
+	  if(XNA[Xna_in[i]][j]) {
+	    assert(X[i][j] == -12345.0);
+	    X[i][j] = -INF;
+	  }
+	}
+      }
+    }
+  } else assert(XNA_in == NULL);
+  return(XNA);
+}
+  
 } // extern brace
 

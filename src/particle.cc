@@ -117,18 +117,18 @@ void Particle::Propagate(unsigned int index)
 
   /* calculate the probability of staying at the same tree */
   double pstay = leaf->stayProb();
+  // myprintf(stdout, "pstay=%g\n", pstay);
 
-  /* calculate the probability of growing to a new tree
-     by splitting at the leaf node that pall->X[index] 
-     belongs to */
-  int var;
-  double val;
+  /* calculate the probability of growing to a new tree by 
+     splitting at the leaf node that pall->X[index] belongs to */
+  int var; double val;
   double pgrow = leaf->growProb(&var, &val);
+  // myprintf(stdout, "pgrow=%g\n", pgrow);
  
   /* calculate the probability of pruning back from the
-     parent of the leaf node that pall->X[index] belongs
-     to */
+     parent of the leaf node that pall->X[index] belongs to */
   double pprune = leaf->pruneProb();
+  // myprintf(stdout, "pprune=%g\n\n", pprune);
 
   /* clever normalization to reduce numerical error */
   double lnorm;
@@ -165,6 +165,8 @@ void Particle::Propagate(unsigned int index)
   /* if not prune then automatically grow */
   if(u < pstay + pprune) leaf->Parent()->prune();
   else leaf->grow(var, val);
+  /* grow assumes missing pall->X values un-(randomly)-changed
+     since growProb calculation */
 }
 
 
@@ -176,10 +178,11 @@ void Particle::Propagate(unsigned int index)
  * used in the PL resample ste
  */
 
-double Particle::PostPred(double *xx, double yy)
+double Particle::PostPred(double *xx, double yy, int *xna)
 {
   assert(tree != NULL);
-  Tree* leaf = tree->GetLeaf(xx);
+  // if(xna) printIVector(xna, pall->m, stdout);
+  Tree* leaf = tree->GetLeaf(xx, xna);
   double post = leaf->PostPred(xx, yy);
   return post;
 }
@@ -299,6 +302,24 @@ void Particle::Retire(unsigned int index, double lambda)
   tree->RetireDatum(index, lambda);
   tree->DecrementP(pall->n - 1, index);
 }
+
+
+/*
+ * Interval:
+ *
+ * extracts the interval (rectangle bounds) for X[index,var]
+ * in the particle cloud
+ */
+
+
+void Particle::Interval(unsigned int index, unsigned int var, double *a, double *b)
+{
+  Tree *leaf = tree->GetLeaf(index);
+  assert(leaf);
+  *a = leaf->Min(var);
+  *b = leaf->Max(var);
+}
+
 
 
 /*
@@ -515,10 +536,10 @@ void Particle::EImECI(double **XX, unsigned int nn, double **Xref,
  */
 
 void Particle::ALC(double **XX, unsigned int nn, double **rect, 
-		   double *alc)
+		   int *cat, bool approx, double *alc)
 {
   for(unsigned int i=0; i<nn; i++)
-      alc[i] += tree->ALC(XX[i], rect);
+    alc[i] += tree->ALC(XX[i], rect, cat, approx);
 }
 
 
@@ -531,9 +552,26 @@ void Particle::ALC(double **XX, unsigned int nn, double **rect,
  * reference locations
  */
 
-void Particle::ALC(double **rect, double *alc)
+void Particle::ALC(double **rect, int *cat, bool approx, double *alc)
 {
-    tree->ALC(rect, alc);
+  tree->ALC(rect, cat, approx, alc);
+}
+
+
+/*
+ * Relevance:
+ *
+ * accumulate the (un-normalized) reduction in average variance
+ * statistic for the each split in tree based on integrating 
+ * over the rectangle of reference locations described
+ * by the partition, i.e., calculate the partial dependencies
+ * for each input direction
+ */
+
+double Particle::Relevance(double **rect, int *cat, bool approx, double *delta)
+{
+  zerov(delta, pall->m);
+  return tree->Relevance(rect, cat, approx, delta);
 }
 
 

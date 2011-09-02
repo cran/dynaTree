@@ -12,15 +12,15 @@ Monte Carlo (SMC) method of particle learning (PL)
 \usage{
 dynaTree(X, y, N = 1000, model = c("constant", "linear", "class"),
          nu0s20 = c(0,0), ab = c(0.95, 2), minp = NULL, sb = NULL, 
-	 icept = c("implicit", "augmented", "none"), 
+	 nstart = minp, icept = c("implicit", "augmented", "none"), 
          rprop = c("luvar", "luall", "reject"), verb = round(length(y)/10))
 dynaTrees(X, y, N = 1000,  R = 10,
           model = c("constant", "linear", "class"), nu0s20 = c(0,0),
-          ab=c(0.95, 2), minp = NULL, sb = NULL, 
+          ab=c(0.95, 2), minp = NULL, sb = NULL, nstart = minp,
           icept =  c("implicit", "augmented", "none"),
           rprop = c("luvar", "luall", "reject"), XX = NULL, yy = NULL,
-	  varprop = FALSE,  plotit = FALSE, proj = 1, rorder = TRUE, 
-	  verb = round(length(y)/10),  pverb=round(N/10), ...)
+	  varstats = FALSE, lhs = NULL, plotit = FALSE, proj = 1,
+          rorder = TRUE, verb = round(length(y)/10),  pverb=round(N/10), ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -70,6 +70,10 @@ dynaTrees(X, y, N = 1000,  R = 10,
     column of \code{X} to use as covariates in the linear model
     at the leaves, respectively
   }
+  \item{nstart}{
+    a positive scalar integer \code{>= minp} indicating
+    the time index at which treed partitioning is allowed to start
+  }
   \item{icept}{
     indicates the type of intertecpt term used (only applies to
     \code{model="linear"}).  The default, \code{"implicit"} 
@@ -91,12 +95,18 @@ dynaTrees(X, y, N = 1000,  R = 10,
   predictive locations at which the log posterior probability are
   to be reported
   }  	 
-  \item{varprop}{
-  if \code{TRUE} causes the \code{\link{varpropuse}} and
-  \code{\link{varproptotal}} functions to be called on after each
+  \item{varstats}{
+  if \code{TRUE} causes the \code{\link{varpropuse}},
+  \code{\link{varproptotal}}, and \code{\link{relevance.dynaTree}}
+  functions to be called on after each
   repetition to collect the usage proportions of each input variable
  (column of \code{X}); see those documentation files for more details
 }
+\item{lhs}{
+  an optional \code{lhs} argument to
+    \code{\link{sens.dynaTree}} if a sensitivity analysis step is
+    desired after each restart (\code{XX="sens"})
+  }
   \item{plotit}{
     a scalar \code{logical} indicating if the fit should be plotted
     after each of the \code{R} repeats; only applies to 1-d data
@@ -203,20 +213,20 @@ dynaTrees(X, y, N = 1000,  R = 10,
   \item{num }{ a \dQuote{pointer} to the \code{C}-side particle
     cloud; see the note below }
 
-  -\cr
-  The \code{dynaTrees} function can obtain predictive samples (via
-  \code{\link{predict.dynaTree}}) at each of the \code{R} repeats.
-  Therefore, the \code{"dynaTree"} object returned contains
+  -\cr 
+  The \code{dynaTrees} function can obtain predictive samples
+  (via \code{\link{predict.dynaTree}}) at each of the \code{R}
+  repeats.  Therefore, the \code{"dynaTree"} object returned contains
   extra fields collecting these predictive samples, primarily
-  comprising of \code{R} columns of information for each
-  of the fields returned by  \code{\link{predict.dynaTree}};
-  see that function for more details.  Likewise, when \code{varprop =
-  TRUE} the returned object also contains \code{vpu} and \code{vpt}
-  fields whose columns contain the \code{\link{varpropuse}} and
+  comprising of \code{R} columns of information for each of the fields
+  returned by \code{\link{predict.dynaTree}}; see that function for
+  more details.  Likewise, when \code{varstats = TRUE} the returned
+  object also contains \code{vpu}, \code{vpt} and \code{parde[} fields
+  whose columns contain the \code{\link{varpropuse}} and
   \code{\link{varproptotal}} outputs.
 
   Likewise, \code{dynaTrees}, can provide variable usage summaries
-  if \code{varprop = TRUE}, in which case the output includes
+  if \code{varstats = TRUE}, in which case the output includes
   \code{vpu} and \code{vpt} fields; See \code{\link{varpropuse}}
   and \code{\link{varproptotal}} for more details
 
@@ -229,6 +239,11 @@ dynaTrees(X, y, N = 1000,  R = 10,
   \dQuote{Dynamic trees for learning and design}
   Journal of the American Statistical Association, 106(493), pp. 109-123;
   arXiv:0912.1636
+
+  Gramacy, R.B., Taddy, M.A., and S. Wild (2011).
+ \dQuote{Variable Selection and Sensitivity Analysis via
+   Dynamic Trees with an Application to Computer Code Performance Tuning}
+  arXiv:1108.4739
 
   Carvalho, C., Johannes, M., Lopes, H., and Polson, N. (2008).
   \dQuote{Particle Learning and Smoothing}.
@@ -280,7 +295,8 @@ dynaTrees(X, y, N = 1000,  R = 10,
   \code{\link{predict.dynaTree}}, \code{\link{update.dynaTree}},
   \code{\link{plot.dynaTree}}, \code{\link{deletecloud}},
   \code{\link{copy.dynaTree}}, \code{\link{getBF}}, 
-  \code{\link{varpropuse}}, \code{\link{varproptotal}}
+  \code{\link{varpropuse}}, \code{\link{varproptotal}},
+  \code{\link{sens.dynaTree}}, \code{\link{relevance.dynaTree}}
 }
 \examples{
 ## simple parabolic data
@@ -301,7 +317,6 @@ parab.fit.copy <- copy(parab.fit)
 
 ## must delete the cloud or memory may leak
 deletecloud(parab.fit); parab.fit$num <- NULL
-
 ## to delete all clouds, do:
 deleteclouds()
 

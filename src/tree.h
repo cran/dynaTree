@@ -94,10 +94,13 @@ class Tree
   /* creating new leaves, and removing them */
   unsigned int grow_child(Tree** child, FIND_OP op);
   int part_child(FIND_OP op, int **pnew, unsigned int *plen);
-  bool grow_children(void);
+  bool grow_children(bool missrand);
+  void Missing(void);
+  bool Missing(unsigned int index, unsigned int var);
 
   /* calculating split locations */
   bool ChooseVarVal(void);
+  unsigned int GetXcol(unsigned int var, double *x);
 
  public:
 
@@ -118,9 +121,15 @@ class Tree
    * return current values of the parameters */
   int getDepth(void) const;
   int getN(void) const;
-  Tree* GetLeaf(double *x);
+  Tree* GetLeaf(double *x, int *xna);
+  Tree* GetLeaf(unsigned int index);
+  double Min(unsigned int var);
+  double Max(unsigned int var);
 
   /* access function: info about nodes */
+  bool goLeft(unsigned int index, bool always);
+  bool goLeft(double *x, int *xna);
+  double LeftBal(void);
   bool isLeaf(void) const;
   bool isRoot(void) const;
   char* State(int which);
@@ -185,10 +194,13 @@ class Tree
   /* prediction and adaptive sampling */
   void Predict(double *xx, double *mean, double *sd, double *df);
   double ALC(double *x, double *y);
-  double ALC(double *x, double **rect);
-  void ALC(double **rect, double *alc_out);
+  double ALC(double *x, double **rect, int *cat, bool approx);
+  void ALC(double **rect, int *cat, bool approx, double *alc_out);
   double ECI(double *x, double *y, double ymean, double ysd, 
 	     double fmin, double ei);
+  double AvgVar(double **rect, int *cat, bool approx);
+  double AvgEntropy(double **rect, int *cat, bool approx);
+  double Relevance(double **rect, int *cat, bool approx, double *delta);
 
   /* prediction for classification */
   void Predict(double *x, double *pred);
@@ -201,6 +213,9 @@ class Tree
 double calculate_linear(unsigned int m, double **XtX, double*Xty, 
 			double **XtXi, double *ldet_XtXi, double *bmu);
 double log_determinant_chol(double **M, const unsigned int n);
-double intdot2(unsigned int m, double c, double *y, double *a, double *b);
+double intdot2(unsigned int m, double c, double *y, double *a, double *b,
+	       int *cat, double approx);
+double intdot(unsigned int m, double c, double **g, double *a, double *b,
+	      int *cat, double approx);
 
 #endif

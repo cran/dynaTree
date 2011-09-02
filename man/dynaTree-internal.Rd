@@ -8,7 +8,7 @@
 %%% THINGS THAT DO NEED TO BE DOCUMENTED EVENTUALLY
 \alias{classprobs.dynaTree}
 \alias{ieci.dynaTree}
-\alias{rejuvinate.dynaTree}
+\alias{intervals.dynaTree}
 \title{Internal dynaTree Functions}
 \description{
   Internal \pkg{dynaTree} functions

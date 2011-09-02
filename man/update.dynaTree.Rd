@@ -128,7 +128,8 @@ deletecloud(obj); obj$num <- NULL
 
 ## see demo("design") for more iterations and
 ## design under other active learning heuristics
-## like ALC, and EI for optimization
+## like ALC, and EI for optimization; also see
+## demo("online") for an online learning example
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

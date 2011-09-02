@@ -26,6 +26,8 @@
 #ifndef __PALL_H__
 #define __PALL_H__ 
 
+#define INF 1e300*1e300
+
 /* types of models supported */
 typedef enum Model {CONSTANT=1001, LINEAR=1002, CLASS=1003} Model;
 typedef enum RProp {LUALL=1001, LUVAR=1002, REJECT=1003} RProp;
@@ -36,6 +38,9 @@ typedef struct pall {
   unsigned int n;          /* number of (x,y) pairs */
   unsigned int g;          /* number of retired inputs */
   unsigned int m;          /* number of predictors; cols of X */
+  unsigned int nna;        /* number of NA rows in X */
+  int *Xna;                /* NA index matrix; (-1) for row not NA */
+  int **XNA;               /* col NA indicator; nna x m matrix */
   unsigned int nc;         /* number of class labels */
   double nu0;              /* variance prior sample size */
   double s20;              /* prior variance estimate */
@@ -51,9 +56,11 @@ typedef struct pall {
 } Pall;
 
 Pall *new_pall(double **X, unsigned int n, unsigned int m, 
+	       int *Xna, int **XNA, unsigned int nna,
 	       double *y, double *params, int model);
 Pall *copy_pall(Pall *pold);
-void add_data(Pall *data, double **X, unsigned int n, double *y);
+void add_data(Pall *data, double **X, unsigned int n, 
+	      int *Xna, int **XNA, unsigned int nna, double *y);
 void retire(Pall *data, unsigned int index);
 void delete_pall(Pall *data);
 void reorder(Pall *pall, int *o);
