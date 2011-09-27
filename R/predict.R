@@ -735,7 +735,7 @@ sens.dynaTree <- function(object, class=NULL, nns=1000, nME=100, span=0.3,
         cls <- NULL
         if(verb > 0) cat("regression sensitivity analysis:\n")
       } else if(verb > 0) cat("class", cls, "sensitivity analysis:\n")
-      
+
       ## call the C-side sens routine
       sens <- .C("sens_R",
                  cloud = as.integer(object$num),

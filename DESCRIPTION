@@ -1,7 +1,7 @@
 Package: dynaTree
 Title: Dynamic trees for learning and design
-Version: 1.2-1
-Date: 2011-09-02
+Version: 1.2-2
+Date: 2011-09-27
 Author: Robert B. Gramacy <rbgramacy@chicagobooth.edu> and Matt A.
         Taddy <taddy@chicagobooth.edu>
 Depends: R (>= 2.4), methods
@@ -16,6 +16,6 @@ Description: Inference by sequential Monte Carlo for dynamic tree
 Maintainer: Robert B. Gramacy <rbgramacy@chicagobooth.edu>
 License: LGPL
 URL: http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html
-Packaged: 2011-09-02 23:25:28 UTC; bobby
+Packaged: 2011-09-27 14:29:28 UTC; rgramacy
 Repository: CRAN
-Date/Publication: 2011-09-03 06:24:01
+Date/Publication: 2011-09-28 07:02:12

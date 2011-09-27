@@ -41,7 +41,7 @@
   the prior in the leaves of the tree of each particle.  Further
   \code{\link{update.dynaTree}} calls (adding data) may cause
   changes to the posterior predictive as grow moves cannot keep
-  preserve the \dQuote{retires}; see a forthcoming paper for more
+  the \dQuote{retires}; see a forthcoming paper for more
   details.  In many ways, \code{\link{retire.dynaTree}} is the
   opposite of \code{\link{update.dynaTree}} except that the loss of
   information upon \dQuote{retireing} is not complete.
@@ -61,7 +61,7 @@
 }
 \note{ In order to use \code{model = "linear"} with
   \code{\link{dynaTree}} and retirement one must also specify
-  \code{icept = "augmented"} which automaticallty augments an
+  \code{icept = "augmented"} which automatically augments an
   extra column of ones onto the input \code{X} design matrix/matrices.
   The \code{retire} function only supports this \code{icept} case
 }
@@ -72,7 +72,7 @@
   Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
   \dQuote{Dynamic trees for learning and design}
   Journal of the American Statistical Association, 106(493), pp. 109-123;
-  arXiv:0912.1636 
+  arXiv:0912.1586 
 
   \url{http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html}
 }

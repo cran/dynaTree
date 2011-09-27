@@ -48,7 +48,7 @@ dynaTrees(X, y, N = 1000,  R = 10,
 }
  \item{nu0s20}{
    a two-vector indicating Inverse Gamma prior parameters
-   \code{c(nu0, sigma20)} for the vairiance in each leaf node,
+   \code{c(nu0, sigma20)} for the variance in each leaf node,
    \eqn{\sigma^2}{sigma2}.  A \code{c(0,0)} setting indicates 
    a default, scale-invariant, prior; does not apply to the
    \code{"class"} model 
@@ -75,12 +75,12 @@ dynaTrees(X, y, N = 1000,  R = 10,
     the time index at which treed partitioning is allowed to start
   }
   \item{icept}{
-    indicates the type of intertecpt term used (only applies to
+    indicates the type of intertcept term used (only applies to
     \code{model="linear"}).  The default, \code{"implicit"} 
     causes the inputs \code{X} to be centered so the intercept can be
     implied as an afterthought; \code{"augmented"} causes the inputs 
     \code{X} to automatically gain a leading column of ones in a way
-    that is trasparent to the user; and \code{"none"} assumes that
+    that is transparent to the user; and \code{"none"} assumes that
     no intercept is being used, or that the user has pre-treated
     \code{X} to have a column of ones
   }
@@ -120,7 +120,7 @@ dynaTrees(X, y, N = 1000,  R = 10,
   \item{rorder}{
     a scalar \code{logical} indicating if
     the rows of \code{X} (and corresponding components of
-    \code{y}) shoould be randomly re-ordered for repeats
+    \code{y}) should be randomly re-ordered for repeats
     \code{2:R} in order to assess the how the time-ordering
     of the SMC effects the Monte Carlo
     error; only applies to \code{dynaTrees}.  Alternatively,
@@ -131,7 +131,7 @@ dynaTrees(X, y, N = 1000,  R = 10,
     indicates the scheme used to construct a grow proposal.
     The best setting, \code{"luall"} uses the lower (L) and upper (U)
     rectangle method based on \code{minp} (above) as described 
-    in the seminal refence in which
+    in the seminal reference in which
     the growing location and dimension is sampled uniformly.  It can
     be computationally intensive for large input spaces.  A thriftier
     option (the default) in this case is \code{"luvar"} which uniformly chooses the
@@ -162,7 +162,7 @@ dynaTrees(X, y, N = 1000,  R = 10,
   which is stored as an object in \code{C}.  A \dQuote{pointer} to that
   object is the primary return value. The \code{dynaTrees} function
   fits several (\code{R}) different dynamic tree models on different
-  time-oderings of the data indices and also
+  time-orderings of the data indices and also
   obtains samples from the posterior predictive distribution at
   new \code{XX} locations.  These predictions can be averaged
   over each repeat, or used to assess the Monte Carlo predictive
@@ -184,7 +184,7 @@ dynaTrees(X, y, N = 1000,  R = 10,
      (\code{minp}) in each region.
 
   Once a \code{"dynaTree"}-class object has been built (by
-  \code{dynaTree}, predictions and estimates of sequential design and
+  \code{dynaTree}), predictions and estimates of sequential design and
   optimization criteria can be obtained via
   \code{\link{predict.dynaTree}}, a generic prediction method.
   These values can be used to augment the design, and the
@@ -204,7 +204,7 @@ dynaTrees(X, y, N = 1000,  R = 10,
   \item{params}{ a 3-vector containing \code{c(alpha, beta, minp)}}
   \item{verb }{ a copy of the verbosity argument }
   \item{lpred }{ a vector of \code{log} posterior probabilities
-    for of each observation, conditional on the ones previous,
+    for each observation, conditional on the ones previous,
     for all time \code{(2*minp):T}; see \code{getBF} for calculating
   Bayes factors from these}
   \item{icept}{ a copy of the intercept argument }
@@ -238,7 +238,7 @@ dynaTrees(X, y, N = 1000,  R = 10,
  Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
   \dQuote{Dynamic trees for learning and design}
   Journal of the American Statistical Association, 106(493), pp. 109-123;
-  arXiv:0912.1636
+  arXiv:0912.1586
 
   Gramacy, R.B., Taddy, M.A., and S. Wild (2011).
  \dQuote{Variable Selection and Sensitivity Analysis via
@@ -270,7 +270,7 @@ dynaTrees(X, y, N = 1000,  R = 10,
 \note{
   As mentioned in the details section, above, the
   \code{dynaTree} function returns a pointer to a particle
-  cloud allocated in \code{C}.  This is pointer is used
+  cloud allocated in \code{C}.  This pointer is used
   for prediction, via \code{\link{predict.dynaTree}} and for
   later updating/augmentation of data, via
   \code{\link{update.dynaTree}}.

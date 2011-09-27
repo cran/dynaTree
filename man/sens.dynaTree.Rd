@@ -54,7 +54,7 @@
     a \code{\link{list}} with entries \code{rect}, \code{shape}
     and \code{mode} describing the marginal distributions of
     the Latin Hypercube; specify \code{NULL}
-    for a default specification for for
+    for a default specification for 
     \code{method = "boot"}.  The fields should have the following
     format(s):
     \itemize{

@@ -36,7 +36,7 @@
   to the \code{\link{dynaTree}} posterior under the ordering specified
   by \code{odr}, which may be random.  Subsequent calls to
   \code{\link{update.dynaTree}} cause the particle set to revert back
-  to \code{object$N} particles as only that many are obtain from
+  to \code{object$N} particles as only that many are obtained from
   the particle learning resample step.
 
   This function can be particularly useful in online learning contexts,
@@ -61,7 +61,7 @@
   Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
   \dQuote{Dynamic trees for learning and design}
   Journal of the American Statistical Association, 106(493), pp. 109-123;
-  arXiv:0912.1636
+  arXiv:0912.1586
 
   Carvalho, C., Johannes, M., Lopes, H., and Polson, N. (2008).
   \dQuote{Particle Learning and Smoothing}.

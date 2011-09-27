@@ -37,7 +37,12 @@ getBF(obj1, obj2)
  Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
   \dQuote{Dynamic trees for learning and design}
   Journal of the American Statistical Association, 106(493), pp. 109-123;
-  arXiv:0912.1636
+  arXiv:0912.1586
+
+  Gramacy, R.B., Taddy, M.A., and S. Wild (2011).
+   \dQuote{Variable Selection and Sensitivity Analysis via
+   Dynamic Trees with an Application to Computer Code Performance Tuning}
+  arXiv:1108.4739
 
   \url{http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html}
 }

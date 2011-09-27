@@ -37,6 +37,7 @@ extern "C"
 #include <stdlib.h>
 #include <assert.h>
 #include <Rmath.h>
+#include <R.h>
 #include <math.h>
 
 // #define DEBUG

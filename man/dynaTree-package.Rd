@@ -23,7 +23,7 @@ Matt Taddy \email{taddy@chicagobooth.edu}
  Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
   \dQuote{Dynamic trees for learning and design}
   Journal of the American Statistical Association, 106(493), pp. 109-123;
-  arXiv:0912.1636
+  arXiv:0912.1586
 
   \url{http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html}
 }

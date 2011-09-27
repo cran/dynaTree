@@ -40,7 +40,7 @@
   \item{categ}{
     A vector of logicals of length \code{ncol(object$X)} indicating
     which, if any, dimensions of the input space should be treated
-    as categorical; this input is used to helps with the analytic
+    as categorical; this input is used to help with the analytic
     integrals from a \code{rect}-based calculation, which means
     it should not specified along with \code{Xref}; the default \code{categ}
     argument is \code{NULL} meaning that the categorical inputs
@@ -100,7 +100,7 @@
   Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
   \dQuote{Dynamic trees for learning and design}
   Journal of the American Statistical Association, 106(493), pp. 109-123;
-  arXiv:0912.1636
+  arXiv:0912.1586
   
   \url{http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html}
 }

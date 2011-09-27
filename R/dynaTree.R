@@ -194,7 +194,7 @@ update.dynaTree <- function(object, X, y, verb=round(length(y)/10), ...)
     object2$cloud <- NULL
     
     ## put non-transposed X back, and combine
-    if(object$mode == "class") y <- y + 1
+    if(object$model == "class") y <- y + 1
     if(!is.null(tXNA)) {
       X[NAX] <- NA
       obj$XNA <- rbind(object$XNA, t(tXNA))
@@ -263,8 +263,9 @@ retire.dynaTree <- function(object, indices, lambda=1, verb=0)
               y = double(nnew),
               PACKAGE = "dynaTree")
 
-    ## copy new X and y into object 
+    ## copy new X and y into object
     object$X <- matrix(out$X, ncol=m, byrow=TRUE)
+    if(object$model == "class") out$y <- out$y + 1
     object$y <- out$y
     if(is.null(object$removed)) object$removed <- removed
     else object$removed <- object$removed + removed

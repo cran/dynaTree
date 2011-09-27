@@ -1,3 +1,13 @@
+1.2-2 (27 Sept 2011)
+----
+
+Fixed bug in retire.dynaTree that was causing y-labels to be 
+off by 1 for classification; this was leading to an assertion 
+failure in sens.dynaTree
+
+fixed typos in documentation
+
+
 1.2-1 (2 Sept 2011)
 ----
 

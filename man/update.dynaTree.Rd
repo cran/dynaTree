@@ -57,7 +57,7 @@ design and optimization applications
  Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
   \dQuote{Dynamic trees for learning and design}
   Journal of the American Statistical Association, 106(493), pp. 109-123;
-  arXiv:0912.1636
+  arXiv:0912.1586
 
   Carvalho, C., Johannes, M., Lopes, H., and Polson, N. (2008).
   \dQuote{Particle Learning and Smoothing}.
