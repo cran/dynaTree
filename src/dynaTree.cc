@@ -329,6 +329,64 @@ void intervals_R(/* inputs */
 
 
 /*
+ * treestats_R:
+ *
+ * R-interface to a routine that extracts average tree
+ * information like height and number of observations
+ * in each leaf
+ */
+
+void treestats_R(/* inputs */
+		 int *c_in,
+		 double *height_out,
+		 double *avgsize_out,
+		 double *avgretire_out)
+{
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+
+  cloud->TreeStats(height_out, avgsize_out, avgretire_out);
+}
+
+
+/*
+ * sameleaf_R:
+ *
+ * R-interface to a routine that extracts counts of the
+ * number of time each X location (provided) is in the 
+ * same leaf as each other x
+ */
+
+void sameleaf_R(/* inputs */
+		int *c_in,
+		double *X_in,
+		int *n_in,
+		int *counts_out)
+{
+  /* IF MISSING DATA THEN NEED TO GET RANDOM SEED */
+
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+  unsigned int m = cloud->pall->m;
+
+  /* matrixify X */
+  unsigned int n = (unsigned int) *n_in;
+  double **X = new_matrix_bones(X_in, n, m);
+
+  /* call the cloud function */
+  cloud->SameLeaf(X, n, counts_out);
+
+  /* clean up */
+  free(X);
+}
+
+
+/*
  * predict_R:
  *
  * function to predict at new XX locations based on 
@@ -698,9 +756,8 @@ void classprobs_R(/* inputs */
     error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
-  unsigned int nc = cloud->pall->nc;
   unsigned int cl = *class_in;
-  assert(cl < nc);
+  assert(cl < (unsigned) cloud->pall->nc);
 
   /* verbosity argument */
   unsigned int verb = *verb_in;
@@ -758,7 +815,8 @@ void sens_R(/* inputs */
 
   /* get the cloud */
   unsigned int c = *c_in;
-  if(clouds == NULL || clouds[c] == NULL) error("cloud %d is not allocated\n", c);
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
   unsigned int aug = (unsigned) *aug_in;
@@ -845,7 +903,7 @@ void varproptotal_R(int *c_in, double* props_out)
  * newly allocated cloud reference
  */
 
-  void copy_cloud_R(int *c_in, int *c_out)
+void copy_cloud_R(int *c_in, int *c_out)
 {
   /* get the cloud */
   unsigned int c = *c_in;

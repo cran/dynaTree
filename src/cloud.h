@@ -101,6 +101,10 @@ class Cloud
   void Predict(unsigned int cl, double **XX, unsigned int nn, double **p,
 	       double **c, unsigned int verb);
   void Entropy(double *entropy_out, unsigned int verb);
+
+  /* information extracting about particles */
+  void TreeStats(double *height, double *avgsize, double *avgretire);
+  void SameLeaf(double **X, unsigned int n, int *counts);
 };
 
 

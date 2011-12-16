@@ -283,7 +283,7 @@ bool Tree::goLeft(double *x, int *xna)
 
   /* if the var coordinate is missing */
   if(xna && xna[var]) {
-    assert(isinf(x[var]));
+    assert(!R_FINITE(x[var]));
     // if(LeftBal() >= 0.5) return true;
     if(unif_rand() < 0.5) return true;
     else return false;
@@ -457,7 +457,8 @@ int Tree::leaves(Tree **first, Tree **last)
 int Tree::leavesN(void)
 {
   Tree *first, *last;
-  int numLeaves = leaves(&first, &last);
+  int numLeaves = 0;
+  numLeaves = leaves(&first, &last);
   assert(numLeaves > 0);
   int N = 0;
   while(first) {
@@ -481,7 +482,7 @@ void Tree::grow(int var, double val)
   assert(isLeaf());
 #endif
 
-  if(isinf(val)) myprintf(stdout, "inf val in grow\n");
+  if(!R_FINITE(val)) myprintf(stdout, "inf val in grow\n");
     
   /* assign the split */
   assert(var >= (int) particle->pall->smin);
@@ -489,7 +490,8 @@ void Tree::grow(int var, double val)
   this->val = val;
 
   /* grow the children; stop if partition too small */
-  assert(grow_children(false));
+  bool success = grow_children(false);
+  assert(success);
   assert(leftChild->n + rightChild->n == n);
 
   /* clear p and and other data */
@@ -592,7 +594,7 @@ bool Tree::ChooseVarVal(void)
     } else { /* find side of the rectangle */
       mn = Min(var);
       mx = Max(var);
-      if(isinf(mn) || isinf(mx)) return false;
+      if(!R_FINITE(mn) || !R_FINITE(mx)) return false;
     }
     
     /* select val */
@@ -600,7 +602,7 @@ bool Tree::ChooseVarVal(void)
   }
 
   /* sanity check and return */
-  assert(isfinite(val));
+  assert(R_FINITE(val));
   return true;
 }
 
@@ -730,7 +732,7 @@ double Tree::stayProb(void)
   double pstay;
   if(parent != NULL) pstay = parent->FullPosterior();
   else pstay = FullPosterior();
-  assert(isfinite(pstay));
+  assert(R_FINITE(pstay));
   return pstay;
  }
 
@@ -750,7 +752,7 @@ void Tree::Missing(void)
   if(pall->Xna) {
     for(unsigned int i=0; i<n; i++) {
       if(Missing(p[i], var)) { /* then flip a coin */
-	assert(isinf(pall->X[p[i]][var]));
+	assert(!R_FINITE(pall->X[p[i]][var]));
 	// if(lb >= 0.5) pall->X[p[i]][var] = -INF;
 	if(unif_rand() < 0.5) pall->X[p[i]][var] = -INF;
 	else pall->X[p[i]][var] = INF; 
@@ -772,7 +774,7 @@ bool Tree::Missing(unsigned int index, unsigned int var)
   assert(index < pall->n && var < pall->m);
   assert(pall->Xna);
   if(pall->Xna[index] >= 0 && pall->XNA[pall->Xna[index]][var]) {
-    assert(isinf(pall->X[index][var]));
+    assert(!R_FINITE(pall->X[index][var]));
     return true;
   } else return false;
 }
@@ -1126,7 +1128,7 @@ double Tree::Posterior(void) /* log post! */
   if(pall->model == LINEAR) post += 0.5*ldet_XtXi;
 
   /* sanity check */
-  assert(!isnan(post));
+  assert(!ISNAN(post));
 
   return post;
 }
@@ -1267,7 +1269,6 @@ Tree* Tree::RetireDatum(unsigned int index, double lambda)
     
     /* save old information */
     double y = pall->y[index];
-    /* Need to save X-row in linear case */
     unsigned int pi=0;
     for(pi=0; pi<n; pi++) if(p[pi] == (int) index) break;
     assert(pi < n);
@@ -1311,15 +1312,14 @@ Tree* Tree::RetireDatum(unsigned int index, double lambda)
 	syyg = lambda*syyg + sq(y);
 
       } else { /* explicit intercept */
-	if(n == 0) { syy = 0; }
+	assert(pall->model == LINEAR);
+	if(n == 0) syy = 0; 
 	else syy -= sq(y);
 	syyg = lambda*syyg + sq(y);
-	assert(pall->model == LINEAR);
       }
 
       /* update linear part of model */
       if(pall->model == LINEAR) {
-	
 	unsigned int m = pall->bmax;
 
 	/* special initialization case */
@@ -1334,14 +1334,16 @@ Tree* Tree::RetireDatum(unsigned int index, double lambda)
 		     X,m,X,m,lambda,XtXg,m);
 	linalg_dgemv(CblasNoTrans,m,1,1.0,X,m,&y,1,lambda,Xtyg,1);
 
-	/* no explicit removal from likelihood since that
-	   can be fascilitated in ::grow via ::Calc; therefore bb, 
-	   bu and ldet_XtXi don't change */
+	/* only re-calculate the sufficient information if forgetting.  
+	   Otherwise ::grow, which will call ::Calc, is sufficient. Because
+	   when lambda = 1, bb and ldet_XtXi (for example) don't change */
+	if(lambda < 1) ReCalcLinear();
       }
     }
 
     /* done */
-    return this;
+    if(n + ng < pall->minp) return this;
+    else return NULL;
 
   } else {
     assert(p == NULL);
@@ -1349,6 +1351,41 @@ Tree* Tree::RetireDatum(unsigned int index, double lambda)
     else return rightChild->RetireDatum(index, lambda);
   }
 }
+
+
+/*
+ * Collapse:
+ * 
+ * shift the information in this node over to its sibling, and then
+ * set up the sibling in this node's parent position, and then prepare
+ * the parent and this node for deletion 
+ */
+
+void Tree::Collapse(void)
+{
+  myprintf(stdout, "collapsing: lost retired information in leaf\n");
+  /* sanity check */
+  assert(isLeaf());
+
+  /* get sibling and sanity check */
+  Tree *sibling = Sibling();
+  assert(sibling);
+
+  /* copy real data information from this node to its sibling */
+  for(unsigned int i=0; i<n; i++) sibling->AddDatum(p[i]);
+
+  /* get the grandparent and set it up as the parent of sibling */
+  Tree *grand = parent->parent;
+  assert(grand != NULL);
+  if(grand->leftChild == parent) grand->leftChild = sibling;
+  else grand->rightChild = sibling;
+  sibling->parent = grand;
+  
+  /* set up the parent and this node for deletion */
+  if(parent->leftChild == this) parent->rightChild = NULL;
+  else parent->leftChild = NULL;
+}
+
 
 /* 
  * DecrementP:
@@ -1713,6 +1750,13 @@ Tree* Tree::Parent(void) const
   return parent;
 }
 
+Tree *Tree::Sibling(void) const
+{
+  if(parent == NULL) return NULL;
+  else if(parent->leftChild == this) return parent->rightChild;
+  else return parent->leftChild;
+}
+
 
 /*
  * Calc:
@@ -1764,6 +1808,55 @@ void Tree::Calc(void)
       bb = calculate_linear(m, XtX, Xty, XtXi, &ldet_XtXi, bmu);
     }
   }
+}
+
+
+/*
+ * ReCalcLinear:
+ *
+ * Updates the (total) sufficient information -- specifically called 
+ * after retirement when lambda < 1
+ */
+
+void Tree::ReCalcLinear(void) 
+{
+  /* sanity check */
+  assert(ng > 0);
+
+  /* pall of the particle this tree belongs to */
+  Pall *pall = particle->pall;
+
+  /* build X and y */
+  unsigned int m = pall->bmax;
+  
+  /* calculate XtX */
+  assert(XtX); zerov(*XtX, m*m);
+  double **X = NULL; double *y = NULL;
+  if(n > 0) {
+    X = new_matrix(n, m);
+    y = new_sub_vector(p, pall->y, n);
+    for(unsigned int i=0; i<n; i++) dupv(X[i], pall->X[p[i]], m);
+    linalg_dgemm(CblasNoTrans,CblasTrans,m,m,n,1.0,
+		 X,m,X,m,0.0,XtX,m);
+  }
+
+  /*  add retire */
+  assert(XtXg); linalg_daxpy(m*m, 1.0, *XtXg, 1, *XtX, 1); 
+
+  /* calculate Xty = t(X) %*% y */
+  assert(Xty); zerov(Xty, m);
+  if(n > 0) { 
+    linalg_dgemv(CblasNoTrans,m,n,1.0,X,m,y,1,0.0,Xty,1);
+    delete_matrix(X);
+    free(y);
+  }
+
+  /* add retire */
+  assert(Xtyg); linalg_daxpy(m, 1.0, Xtyg, 1, Xty, 1);
+
+  /* calculate XtXi, bmu and bb */
+  assert(XtXi); assert(bmu); 
+  bb = calculate_linear(m, XtX, Xty, XtXi, &ldet_XtXi, bmu);
 }
 
 
@@ -1874,6 +1967,7 @@ void Tree::CalcLinear(void)
   Pall *pall = particle->pall;
 
   /* sanity checks */
+  assert(pall->icept);
   assert(pall->model == LINEAR);
   
   /* build y and subtract the (constant) mean */
@@ -1954,6 +2048,12 @@ double calculate_linear(unsigned int m, double **XtX, double*Xty,
   linalg_dsymv(m, 1.0, XtX, m, bmu, 1, 0.0, XtXbmu, 1);
   double bb = linalg_ddot(m, bmu, 1, XtXbmu, 1);
   free(XtXbmu);
+
+  /* final check for trivial Gram matrix */
+  if(bb <= 0) {
+     zero(XtXi, m, m);
+    *ldet_XtXi = 0.0; 
+  }
 
   /* return bb */
   return bb;
@@ -2646,6 +2746,46 @@ double Tree::Max(unsigned int var)
   }
 
   return vmax;
+}
+
+
+/*
+ * SameLeaf:
+ *
+ * return a count of the number of other X values that
+ * are in the same leaf node as each individual X
+ */
+
+void Tree::SameLeaf(double **XX, int *pp, unsigned int nn, int *counts)
+{
+  if(isLeaf()) {
+    
+    /* accumulate counts for each that is still here */
+    for(unsigned int i=0; i<nn; i++) (counts[pp[i]]) += nn;
+
+  } else {
+    
+    unsigned int cn;
+    int *plc = find_col(XX, pp, nn, var, LEQ, val, &cn);
+    if(cn > 0) { /* go left */
+      int *pnew = new_ivector(cn);
+      for(unsigned int j=0; j<cn; j++) pnew[j] = pp[plc[j]];
+      if(plc) free(plc); 
+      leftChild->SameLeaf(XX, pnew, cn, counts);
+      free(pnew);
+    }
+
+    if(cn < nn) { /* go right */
+      int *prc = find_col(XX, pp, nn, var, GT, val, &cn);
+      assert(cn > 0);
+      int *pnew = new_ivector(cn);
+      for(unsigned int j=0; j<cn; j++) pnew[j] = pp[prc[j]];
+      if(prc) free(prc); 
+      rightChild->SameLeaf(XX, pnew, cn, counts);
+      free(pnew);
+    }
+  
+  }
 }
 
 

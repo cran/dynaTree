@@ -45,7 +45,6 @@ dynaTree <-
     if(is.null(nstart)) nstart <- 2*minp
     else if(length(nstart) != 1 || nstart < minp) stop("nstart must be >= minp")
     if(length(y) <= nstart) stop("must have more than nstart X-y pairs")
-    print(c(length(y), nstart))
     
     ## check intercept
     icept <- match.arg(icept)
@@ -385,13 +384,13 @@ setMethod("rejuvenate", "dynaTree", rejuvenate.dynaTree)
 ## predictive distributions of many re-roderings of the data
 
 "dynaTrees"<-
-  function(X, y, N=1000, R=10,
+  function(X, y, N=1000, R=10, sub=length(y),
            model=c("constant", "linear", "class"), nu0s20=c(0,0),
            ab=c(0.95, 2), minp=NULL, sb=NULL, nstart=minp,
            icept=c("implicit", "augmented", "none"),
            rprop=c("luvar", "luall", "reject"), XX=NULL, yy=NULL,
            varstats=FALSE, lhs=NULL, plotit=FALSE, proj=1, rorder=TRUE,
-           verb=round(length(y)/10), pverb=round(N/10),  ...)
+           verb=round(sub/10), pverb=round(N/10),  ...)
   {
     ## use dynaTree and predict by themselves when R = 1
     if(R <= 1) stop("R should be >= 2")
@@ -405,11 +404,11 @@ setMethod("rejuvenate", "dynaTree", rejuvenate.dynaTree)
     
     ## check rorder
     if(length(rorder) > 1) {
-      if(nrow(rorder) != nrow(X) && ncol(rorder) != R)
+      if(nrow(rorder) != sub && ncol(rorder) != R)
         stop("bad rorder argument")
       else o <- rorder
-    } else o <- apply(matrix(runif(nrow(X)*(R-1)), ncol=R-1), 2, order)
-    o <- cbind((1:n), o)
+    } else o <- apply(matrix(runif(sub*(R-1)), ncol=R-1), 2, order)
+    o <- cbind((1:sub), o)
 
     ## check varstats
     if(length(varstats) != 1 || !is.logical(varstats))
@@ -417,7 +416,7 @@ setMethod("rejuvenate", "dynaTree", rejuvenate.dynaTree)
 
     ## build the first model
     if(verb > 0) cat("\nround 1:\n")
-    obj <- dynaTree(X, y, N, model, nu0s20, ab, minp, sb, nstart, icept, rprop, verb)
+    obj <- dynaTree(X[1:sub,], y[1:sub], N, model, nu0s20, ab, minp, sb, nstart, icept, rprop, verb)
 
     ## predict or perform sensitivity analysis
     if(!is.null(XX)) {
@@ -569,3 +568,32 @@ intervals.dynaTree <- function(object, index, var)
 
     return(data.frame(a=out$a, b=out$b))
   }
+
+
+## treestats:
+##
+## returns the upper and lower bounds for the column
+## of all tree partitions used by any X[index,] in the object
+
+setGeneric("treestats",
+            function(object)
+            standardGeneric("treestats")
+            )
+
+treestats.dynaTree <- function(object)
+  {
+    ## make sure object$num is defined
+    if(is.null(object$num)) stop("no cloud number in object")
+
+    out <- .C("treestats_R",
+              cloud = as.integer(object$num),
+              avgheight = double(1),
+              avgsize = double(1),
+              avgretire = double(1),
+              PACKAGE = "dynaTree")
+
+    return(data.frame(avgheight=out$avgheight, avgsize=out$avgsize,
+                      avgretire=out$avgretire))
+  }
+
+setMethod("treestats", "dynaTree", treestats.dynaTree)

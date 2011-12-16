@@ -195,15 +195,7 @@ double Cloud::Resample(unsigned int t, unsigned int verb)
 
     /* gather tree stats */
     double height, avgsize, avgretire;
-    avgretire = avgsize = height = 0.0;
-    for(unsigned int i=0; i<N; i++){
-      height += particle[i]->getHeight();
-      avgsize += particle[i]->AvgSize();
-      if(pall->g > 0) avgretire += particle[i]->AvgRetired();
-    }
-    height /= (double) N;
-    avgsize /= (double) N;
-    avgretire /= (double) N;
+    TreeStats(&height, &avgsize, &avgretire);
 
     /* print tree stats */
     if(pall->g > 0) myprintf(stdout, "t=%d[%d]", t+1+pall->g, t+1);
@@ -863,6 +855,7 @@ void Cloud::Relevance(double **rect, int *cat, bool approx, double **delta,
   scalev(*delta, N*(pall->m), 1.0/area);
 }
 
+
 /*
  * Entropy:
  *
@@ -887,6 +880,45 @@ void Cloud::Entropy(double *entropy_out, unsigned int verb)
 
   /* now average over the number of particles, and normalize */
   scalev(entropy_out, pall->n, 1.0/((double) N));
+}
+
+
+/*
+ * TreeStats:
+ *
+ * return average tree information like average height and
+ * node sizes 
+ */
+
+void Cloud::TreeStats(double *height, double *avgsize, double *avgretire)\
+{
+ /* gather tree stats */
+  *avgretire = *avgsize = *height = 0.0;
+  for(unsigned int i=0; i<N; i++){
+    *height += particle[i]->getHeight();
+    *avgsize += particle[i]->AvgSize();
+    if(pall->g > 0) *avgretire += particle[i]->AvgRetired();
+  }
+  *height /= (double) N;
+  *avgsize /= (double) N;
+  *avgretire /= (double) N;
+}
+
+
+/*
+ * SameLeaf:
+ *
+ * return a count of the number of other X values that
+ * are in the same leaf node as each individual X
+ */
+
+void Cloud::SameLeaf(double **X, unsigned int n, int *counts)
+{
+  /* initialize */
+  zeroiv(counts, n);
+
+  /* accumulate counts for each particle */
+  for(unsigned int i=0; i<N; i++) particle[i]->SameLeaf(X, n, counts);
 }
 
 
@@ -987,7 +1019,7 @@ double norm_weights(double *v, int n)
   int i;
   double vsum = 0.0;
   for(i=0; i<n; i++) vsum += v[i];
-  if(vsum == 0.0 || isnan(vsum)) {
+  if(vsum == 0.0 || ISNAN(vsum)) {
     // assert(0);
     myprintf(stderr, "zero/nan vector or sum in normalize, replacing with unif\n");
     for(i=0; i<n; i++) v[i] = 1.0/n;

@@ -94,6 +94,9 @@ class Particle
   void VarCountUse(int *c);
   void VarCountTotal(double *c);
   void Interval(unsigned int index, unsigned int var, double *a, double *b);
+
+  /* leaf/tree information */
+  void SameLeaf(double **X, unsigned int n, int *counts);
 };
 
 void main_effects(double **XX, unsigned int nn, unsigned int m, 

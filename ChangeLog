@@ -1,3 +1,27 @@
+1.2-3 (16 Dec 2011)
+-----
+
+added NDEBUG to Makevars
+
+Fixed bug when retiring with forgetting in the linear model
+(lambda < 1).  Needed to re-calc bb and other sufficient stats
+that don't need to be done in the lambda=1 case.
+
+added treestats.dynaTree function and changed varprop* 
+functions to be methods of type dynaTree
+
+implemented sameleaf function to calculation average number
+of other points in the same leaf as each row of X
+
+extra check of bb <= 0 in calculate_linear defaulting to 
+constant model, but there are still cases where this doesn't
+work quite right
+
+added Tree::Collapse in as a crude initial attempt to fix
+trees with leaf nodes that become improper after a retirement
+with forgetting
+
+
 1.2-2 (27 Sept 2011)
 ----
 

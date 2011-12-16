@@ -795,14 +795,23 @@ sens.dynaTree <- function(object, class=NULL, nns=1000, nME=100, span=0.3,
   }
 
 setMethod("sens", "dynaTree", sens.dynaTree)
-    
+
+
 ## varpropuse:
 ##
 ## calculate the proportion of particles that use each column
 ## of X to make a treed partition
 
-varpropuse <- function(object)
+setGeneric("varpropuse",
+            function(object)
+            standardGeneric("varpropuse")
+            )
+
+varpropuse.dynaTree <- function(object)
   {
+    ## make sure object$num is defined
+    if(is.null(object$num)) stop("no cloud number in object")
+    
     vc <- .C("varpropuse_R",
              cloud = as.integer(object$num),
              counts = double(ncol(object$X)),
@@ -814,14 +823,24 @@ varpropuse <- function(object)
     return(vc)
   }
 
+setMethod("varpropuse", "dynaTree", varpropuse.dynaTree)
+
 
 ## varproptotal:
 ##
 ## calculate the proportion of particles that use each column
 ## of X to make a treed partition
 
-varproptotal <- function(object)
+setGeneric("varproptotal",
+            function(object)
+            standardGeneric("varproptotal")
+            )
+
+varproptotal.dynaTree <- function(object)
   {
+    ## make sure object$num is defined
+    if(is.null(object$num)) stop("no cloud number in object")
+    
     vc <- .C("varproptotal_R",
              cloud = as.integer(object$num),
              counts = double(ncol(object$X)),
@@ -832,6 +851,42 @@ varproptotal <- function(object)
     
     return(vc)
   }
+
+setMethod("varproptotal", "dynaTree", varproptotal.dynaTree)
+
+
+## sameleaf:
+##
+## calculate the proportion of particles that use each column
+## of X to make a treed partition
+
+setGeneric("sameleaf",
+            function(object, ...)
+            standardGeneric("sameleaf")
+            )
+
+sameleaf.dynaTree <- function(object, X)
+  {
+    ## make sure object$num is defined
+    if(is.null(object$num)) stop("no cloud number in object")
+    
+    ## extract the vitals of X
+    X <- as.matrix(X)
+    n <- nrow(X)
+    if(object$icept == "augmented") X <- cbind(rep(1,n), X)
+    if(ncol(X) != object$m) stop("X has bad dimensions");
+    
+    counts <- .C("sameleaf_R",
+                 cloud = as.integer(object$num),
+                 X = as.double(t(X)),
+                 n = as.integer(n),
+                 counts = integer(n),
+                 PACKAGE = "dynaTree")$counts
+
+    return(counts)
+  }
+
+setMethod("sameleaf", "dynaTree", sameleaf.dynaTree)
 
 
 ## alcalc:

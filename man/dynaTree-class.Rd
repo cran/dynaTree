@@ -13,6 +13,10 @@
 \alias{rejuvenate-methods}
 \alias{relevance-methods}
 \alias{intervals-methods}
+\alias{varpropuse-methods}
+\alias{varproptotal-methods}
+\alias{treestats-methods}
+\alias{sameleaf-methods}
 \alias{retire,dynaTree-method}
 \alias{sens,dynaTree-method}
 \alias{copy,dynaTree-method}
@@ -24,6 +28,10 @@
 \alias{rejuvenate,dynaTree-method}
 \alias{relevance,dynaTree-method}
 \alias{intervals,dynaTree-method}
+\alias{varpropuse,dynaTree-method}
+\alias{varproptotal,dynaTree-method}
+\alias{treestats,dynaTree-method}
+\alias{sameleaf,dynaTree-method}
 \alias{sens}
 \alias{retire}
 \alias{copy}
@@ -35,6 +43,10 @@
 \alias{rejuvenate}
 \alias{relevance}
 \alias{intervals}
+\alias{varpropuse}
+\alias{varproptotal}
+\alias{treestats}
+\alias{sameleaf}
 \title{Class "dynaTree"}
 \description{
 	A stub for class dynaTree and its custom
@@ -45,7 +57,19 @@
   \describe{
     \item{retire}{\code{signature(object = "dynaTree")}: ... }
     \item{sens}{\code{signature(object = "dynaTree")}: ... }
-	 }
+    \item{copy}{\code{signature(object = "dynaTree")}: ... }
+    \item{alc}{\code{signature(object = "dynaTree")}: ... }
+    \item{alcX}{\code{signature(object = "dynaTree")}: ... }
+    \item{entropyX}{\code{signature(object = "dynaTree")}: ... }
+    \item{ieci}{\code{signature(object = "dynaTree")}: ... }
+    \item{classprobs}{\code{signature(object = "dynaTree")}: ... }
+    \item{rejuvenate}{\code{signature(object = "dynaTree")}: ... }
+    \item{relevance}{\code{signature(object = "dynaTree")}: ... }
+    \item{varpropuse}{\code{signature(object = "dynaTree")}: ... }
+    \item{varproptotal}{\code{signature(object = "dynaTree")}: ... }
+    \item{treestats}{\code{signature(object = "dynaTree")}: ... }
+    \item{sameleaf}{\code{signature(object = "dynaTree")}: ... }
+  }
 }
 \details{
  This is just a stub file.  See \code{\link{sens.dynaTree}}

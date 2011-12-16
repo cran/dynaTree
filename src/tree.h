@@ -142,6 +142,7 @@ class Tree
   Tree** buildTreeList(int len);
   int numLeaves(void);
   Tree* Parent(void) const; 
+  Tree* Sibling(void) const; 
 
   /* size checks */
   bool wellSized(void) const;
@@ -159,6 +160,7 @@ class Tree
   void CalcClass(void);
   void CalcConst(void);
   void CalcLinear(void);
+  void ReCalcLinear(void);
 
   /* adjustments for linear prediction */
   double LinearAdjust(double *x, double *bmean, double *xtXtXix, 
@@ -168,6 +170,7 @@ class Tree
   Tree* AddDatum(unsigned int index);
   Tree* RetireDatum(unsigned int index, double lambda);
   void DecrementP(unsigned int oldi, unsigned int newi);
+  void Collapse(void);
 
   /* for rejuvination */
   void ReorderP(int *o);
@@ -187,6 +190,7 @@ class Tree
   double leavesAvgRetired(void);
   void Print(void);
   unsigned int GetVar(void);
+  void SameLeaf(double **X, int *p, unsigned int n, int *count);
   
   /* prior capping/forgetting factor for online learning */
   void CapRetired(void);
@@ -210,6 +214,7 @@ class Tree
 };
 
 /* calculating subroutines */
+void Collapse(Tree *collapse);
 double calculate_linear(unsigned int m, double **XtX, double*Xty, 
 			double **XtXi, double *ldet_XtXi, double *bmu);
 double log_determinant_chol(double **M, const unsigned int n);

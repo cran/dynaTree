@@ -1,18 +1,22 @@
 \name{varpropuse}
-\alias{varpropuse}
-\alias{varproptotal}
+\alias{varpropuse.dynaTree}
+\alias{varproptotal.dynaTree}
+\alias{treestats.dynaTree}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Calculate the proportion of variables used in tree splits
+  Calculate the proportion of variables used in tree splits, and
+  average summary stats of tree heights and leaf sizes
 }
 \description{
   Calculates the proportion of particles which use each input
   to make a tree split and the proportion of all splits in trees
-  of each particle that correspond to each input variable
+  of each particle that correspond to each input variable; also
+  provides tree height and leaf size summary information
 }
 \usage{
-varpropuse(object)
-varproptotal(object)
+\method{varpropuse}{dynaTree}(object)
+\method{varproptotal}{dynaTree}(object)
+\method{treestats}{dynaTree}(object)
 }
 \arguments{
   \item{object}{
@@ -28,10 +32,16 @@ varproptotal(object)
   Usually, \code{varpropuse} returns a vector of (nearly) all ones
   unless there are variables which are not useful in predicting
   the response.  Using \code{model = "linear"} is not recommended
-  for this sort of variable selection
+  for this sort of variable selection.
+
+  \code{treestats} returns the average tree height, and the average
+  leaf size, both active and retired
 }
 \value{
-  A vector of proportions of length \code{ncol(object$X))} is returned
+  For \code{varprop*}, a
+  vector of proportions of length \code{ncol(object$X))} is returned;
+  for \code{treestats} a 1-row, 3-column \code{\link{data.frame}} is
+  returned
 }
 \references{
   Gramacy, R.B., Taddy, M.A., and S. Wild (2011).
@@ -62,6 +72,9 @@ varproptotal(out)
 out <- relevance(out)
 boxplot(out$relevance)
 abline(h=0, col=2, lty=2)
+
+## obtain tree statistics
+treestats(out)
 
 ## clean up
 deletecloud(out)

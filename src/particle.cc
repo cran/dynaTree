@@ -42,11 +42,11 @@ extern "C" {
  * constructor for new data
  */
 
-Particle::Particle(Pall *pall, int *pstart, unsigned int nstart)
+Particle::Particle(Pall *pall_in, int *pstart, unsigned int nstart)
 {
-  assert(pall->minp > 0);
+  assert(pall_in->minp > 0);
   int *p = new_dup_ivector(pstart, nstart);
-  this->pall = pall;
+  this->pall = pall_in;
   tree = new Tree(this, p, nstart, NULL);
 }
 
@@ -72,9 +72,9 @@ Particle::Particle(Particle *p)
  * particle, also swapping t->pall
  */
 
-Particle::Particle(Particle *p, Pall *pall) 
+Particle::Particle(Particle *p, Pall *pall_in) 
 {
-  this->pall = pall;
+  this->pall = pall_in;
   tree = new Tree(p->tree, this, NULL);
 }
 
@@ -133,8 +133,8 @@ void Particle::Propagate(unsigned int index)
 
   /* clever normalization to reduce numerical error */
   double lnorm;
-  if(isfinite(pprune)) {
-    if(isfinite(pgrow)) {
+  if(R_FINITE(pprune)) {
+    if(R_FINITE(pgrow)) {
       lnorm = fmin(pstay, fmin(pprune, pgrow));
       pstay -= lnorm; pgrow -=lnorm; pprune -= lnorm;
     } else {
@@ -142,7 +142,7 @@ void Particle::Propagate(unsigned int index)
       pstay -= lnorm; pprune -= lnorm;
     }
   } else {
-    if(isfinite(pgrow)) {
+    if(R_FINITE(pgrow)) {
       lnorm = fmin(pstay, pgrow);
       pstay -= lnorm; pgrow -= lnorm;
     } else {
@@ -153,7 +153,7 @@ void Particle::Propagate(unsigned int index)
 
   /* normalize the probabilities of the three (two) moves */
   double norm = pstay + pprune + pgrow;
-  if(isinf(norm) || isnan(norm) || norm==0.0) return; 
+  if(!R_FINITE(norm) || ISNAN(norm) || norm==0.0) return; 
   pstay = pstay/norm;
   pprune = pprune/norm;
 
@@ -300,7 +300,16 @@ void Particle::Predict(unsigned int cls, double **XX, unsigned int nn,
 
 void Particle::Retire(unsigned int index, double lambda)
 {
-  tree->RetireDatum(index, lambda);
+  /* retire */
+  Tree* collapse = tree->RetireDatum(index, lambda);
+
+  /* check to see if we need to remove/prune a leaf node */
+  if(collapse) {
+    collapse->Collapse();
+    delete collapse->Parent(); /* should also delete collapse */
+  }
+
+  /* adjust the data pointers */
   tree->DecrementP(pall->n - 1, index);
 }
 
@@ -461,6 +470,26 @@ void Particle::VarCountTotal(double *c)
     c[j] /= ((double) len);
 
   free(leaves);
+}
+
+
+/*
+ * SameLeaf:
+ *
+ * return a count of the number of other X values that
+ * are in the same leaf node as each individual X
+ */
+
+void Particle::SameLeaf(double **X, unsigned int n, int *counts)
+{
+  /* indicators */
+  int *p = iseq(0,n-1);
+
+  /* recursive calculation */
+  tree->SameLeaf(X, p, n, counts);
+
+  /* clean up */
+  free(p);
 }
 
 

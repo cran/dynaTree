@@ -9,6 +9,7 @@
 \alias{classprobs.dynaTree}
 \alias{ieci.dynaTree}
 \alias{intervals.dynaTree}
+\alias{sameleaf.dynaTree}
 \title{Internal dynaTree Functions}
 \description{
   Internal \pkg{dynaTree} functions

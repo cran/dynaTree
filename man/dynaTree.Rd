@@ -14,13 +14,13 @@ dynaTree(X, y, N = 1000, model = c("constant", "linear", "class"),
          nu0s20 = c(0,0), ab = c(0.95, 2), minp = NULL, sb = NULL, 
 	 nstart = minp, icept = c("implicit", "augmented", "none"), 
          rprop = c("luvar", "luall", "reject"), verb = round(length(y)/10))
-dynaTrees(X, y, N = 1000,  R = 10,
+dynaTrees(X, y, N = 1000,  R = 10, sub = length(y),
           model = c("constant", "linear", "class"), nu0s20 = c(0,0),
           ab=c(0.95, 2), minp = NULL, sb = NULL, nstart = minp,
           icept =  c("implicit", "augmented", "none"),
           rprop = c("luvar", "luall", "reject"), XX = NULL, yy = NULL,
 	  varstats = FALSE, lhs = NULL, plotit = FALSE, proj = 1,
-          rorder = TRUE, verb = round(length(y)/10),  pverb=round(N/10), ...)
+          rorder = TRUE, verb = round(sub/10),  pverb=round(N/10), ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -41,6 +41,12 @@ dynaTrees(X, y, N = 1000,  R = 10,
     \dQuote{repeats} or passes through the data,
     as facilitated by \code{dynaTrees}; see details below
 }
+ \item{sub}{
+   Optional argument allowing only a subset of the \code{length(y)}
+   \code{X}-\code{y} pairs to be used in each repeat of 
+  \code{dynaTrees}; each repeat will use a different random subset
+  of size \code{sub}
+ }
   \item{model}{
     indicates the type of model to be used at the leaves of the tree;
     \code{"constant"} and \code{"linear"} apply to regression,
@@ -82,7 +88,11 @@ dynaTrees(X, y, N = 1000,  R = 10,
     \code{X} to automatically gain a leading column of ones in a way
     that is transparent to the user; and \code{"none"} assumes that
     no intercept is being used, or that the user has pre-treated
-    \code{X} to have a column of ones
+    \code{X} to have a column of ones.  The main advantage of
+    \code{"implicit"} over \code{"augmented"} is that the former can
+    default to a constant model fit if leaf design matrices become
+    rank deficient.  The latter defaults to the zero-model in such
+    cases
   }
   \item{XX}{
     a design \code{matrix} of predictive locations (where \code{ncol(XX) ==
