@@ -221,8 +221,9 @@ abline(h=0, col=2, lty=2)
 ## since it will appear that x4 and x5 not helpful; these
 ## interact linearly with the response
 
-## full simulation-based sensitivity analysis
-out <- sens.dynaTree(out, verb=100)
+## full simulation-based sensitivity analysis, the dynaTree::
+## part is only needed if the tgp package is loaded
+out <- dynaTree::sens(out, verb=100)
 
 ## plot the main effects
 r <- range(rbind(c(out$MEmean, out$MEq1, out$MEq2)))

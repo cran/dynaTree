@@ -1,10 +1,30 @@
-# Default NAMESPACE created by R
-# Remove the previous line if you edit this file
+# Load the shared object
+useDynLib(dynaTree)
 
-# Export all names
-exportPattern(".")
+# Exports
+export(alc, alc.dynaTree, alcX, alcX.dynaTree, deletecloud,
+       deleteclouds, copy, copy.dynaTree, dynaTree,
+       dynaTrees, getBF, rejuvenate, rejuvenate.dynaTree,
+       relevance, relevance.dynaTree, retire, retire.dynaTree,
+       sens, sens.dynaTree, treestats, treestats.dynaTree,
+       alcalc, plotprogress, varpropuse, varpropuse.dynaTree,
+       varproptotal, varproptotal.dynaTree)
 
 # Import all packages listed as Imports or Depends
 import(
   methods
 )
+
+# S3
+S3method(alc, dynaTree)
+S3method(alcX, dynaTree)
+S3method(copy, dynaTree)
+S3method(plot, dynaTree)
+S3method(predict, dynaTree)
+S3method(rejuvenate, dynaTree)
+S3method(relevance, dynaTree)
+S3method(retire, dynaTree)
+S3method(sens, dynaTree)
+S3method(update, dynaTree)
+S3method(varpropuse, dynaTree)
+S3method(varproptotal, dynaTree)

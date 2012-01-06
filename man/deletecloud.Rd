@@ -15,7 +15,7 @@ Copy and Delete C-side Clouds in dynaTree Objects
   code is needed to copy the \code{C}-side memory
 }
 \usage{
-copy.dynaTree(obj)
+\method{copy}{dynaTree}(obj)
 deletecloud(obj)
 deleteclouds()
 }

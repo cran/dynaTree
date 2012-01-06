@@ -62,7 +62,6 @@ for(t in (n+1):T) {
   
   ## rejuvenate  every 100
   if(t %% n == 0) {
-    stop()
     hrfit <- rejuvenate(hrfit, odr=1:(n-1), verb=0)
     hdrfit <- rejuvenate(hdrfit, odr=1:(n-1), verb=0)
   }
