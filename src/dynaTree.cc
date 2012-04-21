@@ -56,6 +56,7 @@ void dynaTree_R(/* inputs */
 		int* T_in,
 		int* N_in,
 		double* X_in,
+		int *bna,
 		int *Xna_in,
 		int *XNA_in,
 		double* y_in,
@@ -79,7 +80,9 @@ void dynaTree_R(/* inputs */
   
   /* any missing data (?) */
   unsigned int nna = 0;
-  int ** XNA = alloc_XNA(T, m, X, Xna_in, XNA_in, &nna);
+  int ** XNA = NULL;
+  if(*bna > 0) alloc_XNA(T, m, X, Xna_in, XNA_in, &nna);
+  else Xna_in = NULL;
 
   /* make new Pall */
   Pall *pall = new_pall(X, T, m, Xna_in, XNA, nna, 
@@ -168,7 +171,7 @@ void rejuvenate_R(/* inputs */
   int *pstart = iseq(0,nstart-1);
   
   /* print something? */
-  if(*verb_in > 0) myprintf(stdout, "rejuvenating\n");
+  if(*verb_in > 0) myprintf(mystdout, "rejuvenating\n");
 
   /* allocate a new particle cloud */
   Cloud *newcloud = new Cloud(cloud->Nrevert, cloud->pall, pstart, nstart);
@@ -195,7 +198,7 @@ void rejuvenate_R(/* inputs */
   newcloud = NULL;
 
   /* print something */
-  if(*verb_in > 0) myprintf(stdout, "now %d particles\n", cloud->N);
+  if(*verb_in > 0) myprintf(mystdout, "now %d particles\n", cloud->N);
 
   /* return to R */
   PutRNGstate();
@@ -215,6 +218,7 @@ void update_R(/* inputs */
 	      int* m_in,
 	      int* T_in,
 	      double* X_in,
+	      int *bna,
 	      int *Xna_in,
 	      int *XNA_in,
 	      double* y_in,
@@ -240,7 +244,9 @@ void update_R(/* inputs */
 
   /* any missing data (?) */
   unsigned int nna = 0;
-  int ** XNA = alloc_XNA(T, m, X, Xna_in, XNA_in, &nna);
+  int ** XNA = NULL;
+  if(*bna > 0) alloc_XNA(T, m, X, Xna_in, XNA_in, &nna);
+  else Xna_in = NULL;
 
   /* verbosity argument */
   unsigned int verb = *verb_in;
@@ -399,6 +405,7 @@ void sameleaf_R(/* inputs */
 void predict_R(/* inputs */
 	       int *c_in,
 	       double *XX_in,
+	       int *byy,
 	       double *yy_in,
 	       int *nn_in,
 	       int *verb_in,
@@ -406,9 +413,11 @@ void predict_R(/* inputs */
  	       /* outputs */
 	       double *mean_out,
 	       double *var_out,
+	       int *quants,
 	       double *q1_out,
 	       double *q2_out,
 	       double *yypred_out,
+	       int *bei,
 	       double *ei_out)
 {
   /* IF MISSING DATA THEN NEED TO GET RANDOM SEED */
@@ -427,6 +436,11 @@ void predict_R(/* inputs */
    the posterior predictive distribution */
   unsigned int nn = (unsigned int) *nn_in;
   double **XX = new_matrix_bones(XX_in, nn, m);
+
+  /* deal with possible NULLs */
+  if(*quants == 0.0) q1_out = q2_out = NULL;
+  if(*byy == 0.0) yy_in = yypred_out = NULL;
+  if(*bei == 0.0) ei_out = NULL;
 
   /* predict at the XX locations for each particle */
   cloud->Predict(XX, yy_in, nn, mean_out, var_out, q1_out, 
@@ -692,6 +706,7 @@ void entropyX_R(/* inputs */
 void predclass_R(/* inputs */
 		 int *c_in,
 		 double *XX_in,
+		 int *byy,
 		 int *yy_in,
 		 int *nn_in,
 		 int *verb_in,
@@ -719,6 +734,9 @@ void predclass_R(/* inputs */
   unsigned int nn = (unsigned int) *nn_in;
   double **XX = new_matrix_bones(XX_in, nn, m);
   double **p = new_matrix_bones(p_out, nc, nn);
+
+  /* deal with possible NULL */
+  if(*byy == 0.0) { yy_in = NULL; yypred_out = NULL; }
 
   /* predict at the XX locations for each particle */
   cloud->Predict(XX, yy_in, nn, p, yypred_out, entropy_out, verb);
@@ -792,11 +810,15 @@ void classprobs_R(/* inputs */
 
 void sens_R(/* inputs */
 	    int *c_in,
+	    int *bcls,
 	    int *class_in,
 	    int *nns_in,
 	    int *aug_in,
+	    int *brect,
 	    double *rect_in,
+	    int *bshape,
 	    double *shape_in,
+	    int *bmode,
 	    double *mode_in,
 	    int *cat_in,
 	    int *ngrid_in,
@@ -826,11 +848,16 @@ void sens_R(/* inputs */
   /* verbosity argument */
   unsigned int verb = *verb_in;
   
+  /* deal with possible NULLs; not sure if all are necessary */
+  if(*bcls == 0) class_in = NULL;
+  if(*bshape == 0) shape_in = NULL;
+  if(*bmode == 0) mode_in = NULL;
+
   /* extract stuff to do with the latin hypercube */
   unsigned int nns = (unsigned int) *nns_in;
   double **rect = NULL;  /* indicates boot method instead */
-  if(rect_in) rect = new_matrix_bones(rect_in, 2, m-aug);
-  else assert(shape_in == NULL && mode_in == NULL);
+  if(*brect) rect = new_matrix_bones(rect_in, 2, m-aug);
+  else assert(shape_in == NULL && mode_in == NULL); 
 
   /* storage for samples from the mean effects distribution */
   unsigned int ngrid = (unsigned int) *ngrid_in;
@@ -842,7 +869,7 @@ void sens_R(/* inputs */
   /* storage for the samples of the sensitivity indices */
   double **S = new_matrix_bones(S_out, N, m-aug);
   double **T = new_matrix_bones(T_out, N, m-aug);
-
+  
   /* sensitivity calculations for each particle */
   cloud->Sens(class_in, nns, aug, rect, shape_in, mode_in, cat_in,
 	      Xgrid_t, ngrid, *span_in, mean, q1, q2, S, T, verb);
@@ -988,7 +1015,7 @@ void delete_clouds(void)
 {
   for(unsigned int i=0; i<NC; i++) {
     if(clouds[i]) {
-      myprintf(stdout, "removing cloud %d\n", i);
+      myprintf(mystdout, "removing cloud %d\n", i);
       delete clouds[i];
     }
   }

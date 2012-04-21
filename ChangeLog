@@ -1,3 +1,10 @@
+1.2-6 (21 April 2012)
+-----
+
+dealt with NULL issues and updated to mystdout and 
+mystderr
+
+
 1.2-5 (06 Jan 2012)
 -----
 
@@ -8,6 +15,7 @@ added NAMESPACE file
 -----
 
 now depends on R 2.14.0
+
 
 1.2-3 (16 Dec 2011)
 -----

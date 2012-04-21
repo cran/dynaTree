@@ -198,13 +198,13 @@ double Cloud::Resample(unsigned int t, unsigned int verb)
     TreeStats(&height, &avgsize, &avgretire);
 
     /* print tree stats */
-    if(pall->g > 0) myprintf(stdout, "t=%d[%d]", t+1+pall->g, t+1);
-    else myprintf(stdout, "t=%d", t+1+pall->g);
-    myprintf(stdout, ", np=%d, v(w)=%g, avg: depth=%g, size=%g",
+    if(pall->g > 0) myprintf(mystdout, "t=%d[%d]", t+1+pall->g, t+1);
+    else myprintf(mystdout, "t=%d", t+1+pall->g);
+    myprintf(mystdout, ", np=%d, v(w)=%g, avg: depth=%g, size=%g",
 	     np, prob_var, height, avgsize);
-    if(pall->g > 0) myprintf(stdout, "(%g)", avgretire);
-    myprintf(stdout, "\n");
-    myflush(stdout);
+    if(pall->g > 0) myprintf(mystdout, "(%g)", avgretire);
+    myprintf(mystdout, "\n");
+    myflush(mystdout);
   }
 
   /* return marginal likelihood contribution */
@@ -314,8 +314,8 @@ void Cloud::Retire(int *pretire, unsigned int nretire, double lambda,
 
   /* print how many will be removed */
   if(verb > 0) {
-    myprintf(stdout, "Retiring %d observations: ");
-    printIVector(pretire, nretire, stdout);
+    myprintf(mystdout, "Retiring %d observations: ");
+    printIVector(pretire, nretire, mystdout);
   }
 
   /* for each index to be chosted */
@@ -326,8 +326,8 @@ void Cloud::Retire(int *pretire, unsigned int nretire, double lambda,
 
     /* print the index and X and y values that are being removed */
     if(verb > 0) {
-      myprintf(stdout, "removing y=%g and X=", pall->y[pretire[i]]);
-      printVector(pall->X[pretire[i]], pall->m, stdout, HUMAN);
+      myprintf(mystdout, "removing y=%g and X=", pall->y[pretire[i]]);
+      printVector(pall->X[pretire[i]], pall->m, mystdout, HUMAN);
     }
 
     /* remove from each particle */
@@ -382,8 +382,7 @@ void Cloud::Predict(double **XX, double *yy, unsigned int nn, double *mean,
     assert(q2);
     q1i = new_vector(nn); zerov(q1, nn);
     q2i = new_vector(nn); zerov(q2, nn); 
-  }
-  else q1i = q2i = NULL;
+  } else q1i = q2i = NULL;
 
   /* var and mean should be allocated */
   assert(mean); zerov(mean, nn);
@@ -393,11 +392,11 @@ void Cloud::Predict(double **XX, double *yy, unsigned int nn, double *mean,
   double *m2 = new_zero_vector(nn);
 
   /* predictive probability if required */
-  double *yypredi;
+  double *yypredi = NULL;
   if(yy) {
     assert(yypred);
     yypredi = new_vector(nn); zerov(yypred, nn);
-  } else yypredi = NULL;
+  } 
 
   /* t-variance and DoF pointers if required */
   double *sdi, *dfi;
@@ -414,8 +413,8 @@ void Cloud::Predict(double **XX, double *yy, unsigned int nn, double *mean,
 
     /* print progress if required */
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(stdout, "prediction %d of %d done\n", i+1, N);
-      myflush(stdout);
+      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
+      myflush(mystdout);
     }
 
     /* predict at XX */
@@ -494,8 +493,8 @@ void Cloud::Predict(double **XX, int *yy, unsigned int nn, double **p,
 
     /* print progress if required */
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(stdout, "prediction %d of %d done\n", i+1, N);
-      myflush(stdout);
+      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
+      myflush(mystdout);
     }
 
     /* predict at XX */
@@ -536,8 +535,8 @@ void Cloud::Predict(unsigned int cl, double **XX, unsigned int nn, double **p,
 
     /* print progress if required */
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(stdout, "prediction %d of %d done\n", i+1, N);
-      myflush(stdout);
+      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
+      myflush(mystdout);
     }
 
     /* predict at XX */
@@ -572,8 +571,8 @@ void Cloud::Sens(int *cls, unsigned int nns, unsigned int aug,
 
     /* print progress if required */
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(stdout, "prediction %d of %d done\n", i+1, N);
-      myflush(stdout);
+      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
+      myflush(mystdout);
     }
 
     /* sensitivity within the particle */
@@ -687,8 +686,8 @@ void Cloud::IECI(double **XX, unsigned int nn, double **Xref,
   double *pi;
   for(unsigned int i=0; i<N; i++){
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(stdout, "prediction %d of %d done\n", i+1, N);
-      myflush(stdout);
+      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
+      myflush(mystdout);
     }
     if(probs) pi = probs[i];
     else pi = NULL;
@@ -725,8 +724,8 @@ void Cloud::ALC(double **XX, unsigned int nn, double **Xref,
   double *pi;
   for(unsigned int i=0; i<N; i++){
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(stdout, "prediction %d of %d done\n", i+1, N);
-      myflush(stdout);
+      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
+      myflush(mystdout);
     }
     if(probs) pi = probs[i];
     else pi = NULL;
@@ -761,8 +760,8 @@ void Cloud::ALC(double **XX, unsigned int nn, double **rect,
   /* accumulate ALC at XX locations for each particle */
   for(unsigned int i=0; i<N; i++){
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(stdout, "prediction %d of %d done\n", i+1, N);
-      myflush(stdout);
+      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
+      myflush(mystdout);
     }
     particle[i]->ALC(XX, nn, rect, cat, approx, alc_out);
   }
@@ -800,8 +799,8 @@ void Cloud::ALC(double **rect, int *cat, bool approx, double *alc_out,
   /* accumulate ALC at XX locations for each particle */
   for(unsigned int i=0; i<N; i++) {
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(stdout, "prediction %d of %d done\n", i+1, N);
-      myflush(stdout);
+      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
+      myflush(mystdout);
     }
     particle[i]->ALC(rect, cat, approx, alc_out);
   }
@@ -835,8 +834,8 @@ void Cloud::Relevance(double **rect, int *cat, bool approx, double **delta,
   /* get ALC at XX locations for each particle */
   for(unsigned int i=0; i<N; i++) {
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(stdout, "relevance %d of %d done\n", i+1, N);
-      myflush(stdout);
+      myprintf(mystdout, "relevance %d of %d done\n", i+1, N);
+      myflush(mystdout);
     }
     particle[i]->Relevance(rect, cat, approx, delta[i]);
   }
@@ -872,8 +871,8 @@ void Cloud::Entropy(double *entropy_out, unsigned int verb)
   /* accumulate ALC at XX locations for each particle */
   for(unsigned int i=0; i<N; i++) {
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(stdout, "prediction %d of %d done\n", i+1, N);
-      myflush(stdout);
+      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
+      myflush(mystdout);
     }
     particle[i]->Entropy(entropy_out);
   }
@@ -1021,7 +1020,7 @@ double norm_weights(double *v, int n)
   for(i=0; i<n; i++) vsum += v[i];
   if(vsum == 0.0 || ISNAN(vsum)) {
     // assert(0);
-    myprintf(stderr, "zero/nan vector or sum in normalize, replacing with unif\n");
+    myprintf(mystderr, "zero/nan vector or sum in normalize, replacing with unif\n");
     for(i=0; i<n; i++) v[i] = 1.0/n;
     vsum = 1.0;
   }

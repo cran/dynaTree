@@ -482,7 +482,7 @@ void Tree::grow(int var, double val)
   assert(isLeaf());
 #endif
 
-  if(!R_FINITE(val)) myprintf(stdout, "inf val in grow\n");
+  if(!R_FINITE(val)) myprintf(mystdout, "inf val in grow\n");
     
   /* assign the split */
   assert(var >= (int) particle->pall->smin);
@@ -491,7 +491,7 @@ void Tree::grow(int var, double val)
 
   /* grow the children; stop if partition too small */
   bool success = grow_children(false);
-  assert(success);
+  assert(success); success = TRUE; /* for NDEBUG */
   assert(leftChild->n + rightChild->n == n);
 
   /* clear p and and other data */
@@ -1094,12 +1094,12 @@ double Tree::Posterior(void) /* log post! */
     } else { /* no retires */
       post -= lgamma(((double) n) + 1.0);
       for(unsigned int i=0; i<pall->nc; i++) {
-	// myprintf(stdout, "%d ", counts[i]);
+	// myprintf(mystdout, "%d ", counts[i]);
 	double dci = (double) counts[i];
 	post += lgamma(dci + 1.0/dm); // - lgamma(dci + 1.0);
       }
       post -= dm * lgamma(1.0/dm);
-      // myprintf(stdout, "lpost=%g\n", post);
+      // myprintf(mystdout, "lpost=%g\n", post);
     }
     return post;
   }
@@ -1363,7 +1363,7 @@ Tree* Tree::RetireDatum(unsigned int index, double lambda)
 
 void Tree::Collapse(void)
 {
-  myprintf(stdout, "collapsing: lost retired information in leaf\n");
+  myprintf(mystdout, "collapsing: lost retired information in leaf\n");
   /* sanity check */
   assert(isLeaf());
 
@@ -2097,7 +2097,7 @@ void Tree::Predict(double *x, double *mean_out, double *sd_out, double *df_out)
      assert(*sd_out > 0);
      *mean_out = mean;
 
-     /* myprintf(stdout, "mean=%g, s2numer=%g, df=%g, xtXtXix=%g, sd=%g\n", 
+     /* myprintf(mystdout, "mean=%g, s2numer=%g, df=%g, xtXtXix=%g, sd=%g\n", 
 	mean, s2numer, df, xtXtXix, *sd_out); */
 
    } else {

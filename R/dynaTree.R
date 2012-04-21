@@ -101,6 +101,7 @@ dynaTree <-
               T = as.integer(T),
               N = as.integer(N),
               X = as.double(t(X)),
+              bna = as.integer(any(NAX)),
               Xna = as.integer(Xna),
               XNA = as.integer(tXNA),
               y = as.double(y),
@@ -123,6 +124,7 @@ dynaTree <-
     obj$X <- X
     obj$Xna <- Xna
     obj$T <- NULL
+    obj$bna <- NULL
     obj$model <- model
     if(obj$model == "class") {
       obj$y <- y + 1
@@ -182,6 +184,7 @@ update.dynaTree <- function(object, X, y, verb=round(length(y)/10), ...)
                   m = as.integer(m),
                   T = as.integer(T),
                   X = as.double(t(X)),
+                  bna = as.integer(any(NAX)),
                   Xna = as.integer(Xna),
                   tXNA = as.integer(tXNA),
                   y = as.double(y),

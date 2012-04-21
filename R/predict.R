@@ -42,6 +42,7 @@ predict.dynaTree <- function(object, XX, yy=NULL, quants=TRUE,
       pred <- .C("predclass_R",
                  cloud = as.integer(object$num),
                  XX = as.double(t(XX)),
+                 byy = as.integer(length(yy)),
                  yy = as.integer(yy),
                  nn = as.integer(nn),
                  verb = as.integer(verb),
@@ -63,14 +64,17 @@ predict.dynaTree <- function(object, XX, yy=NULL, quants=TRUE,
       pred <- .C("predict_R",
                  cloud = as.integer(object$num),
                  XX = as.double(t(XX)),
+                 byy = as.integer(length(yy)),
                  yy = as.double(yy),
                  nn = as.integer(nn),
                  verb = as.integer(verb),
                  mean = double(nn),
                  var = double(nn),
+                 quants = as.integer(quants),
                  q1 = double(nn*quants),
                  q2 = double(nn*quants),
                  yypred = double(length(yy)),
+                 bei = as.integer(ei),
                  ei = double(nn*ei),
 		 PACKAGE = "dynaTree")
       
@@ -622,8 +626,8 @@ setGeneric("sens",
             )
 
 sens.dynaTree <- function(object, class=NULL, nns=1000, nME=100, span=0.3,
-                           method=c("lhs", "boot"), lhs=NULL, categ=NULL,
-                           verb=0)
+                          method=c("lhs", "boot"), lhs=NULL, categ=NULL,
+                          verb=0)
   {  
     ## make sure object$num is defined
     if(is.null(object$num)) stop("no cloud number in object")
@@ -709,7 +713,7 @@ sens.dynaTree <- function(object, class=NULL, nns=1000, nME=100, span=0.3,
     MEgrid <- matrix(ncol=d, nrow=nME)
     if(! is.null(lhs$rect)) MErect <- lhs$rect
     else MErect <- t(apply(X,2,range))
-    for(i in 1:d){ MEgrid[,i] <- seq(MErect[i,1], MErect[i,2], length=nME) }
+    for(i in 1:d) { MEgrid[,i] <- seq(MErect[i,1], MErect[i,2], length=nME) }
     
     ## checks for classification
     if(object$model == "class") {
@@ -739,11 +743,15 @@ sens.dynaTree <- function(object, class=NULL, nns=1000, nME=100, span=0.3,
       ## call the C-side sens routine
       sens <- .C("sens_R",
                  cloud = as.integer(object$num),
+                 bcls = as.integer(!is.null(cls)),
                  cls = as.integer(cls-1),
                  nns = as.integer(nns),
-                 aug = as.integer(object$m - d), 
+                 aug = as.integer(object$m - d),
+                 brect = as.integer(!is.null(lhs$rect)),
                  rect = as.double(lhs$rect),
+                 bshape = as.integer(!is.null(lhs$shape)),
                  shape = as.double(lhs$shape),
+                 bmode = as.integer(!is.null(lhs$mode)),
                  mode = as.double(lhs$mode),
                  categ = as.integer(categ),
                  nME = as.integer(nME),
