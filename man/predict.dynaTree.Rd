@@ -1,5 +1,6 @@
 \name{predict.dynaTree}
 \alias{predict.dynaTree}
+\alias{coef.dynaTree}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Prediction for Dynamic Tree Models
@@ -12,6 +13,7 @@ for dynamic tree models
 \usage{
 \method{predict}{dynaTree}(object, XX, yy = NULL, quants = TRUE,
                  ei = FALSE, verb = 0, ...)
+\method{coef}{dynaTree}(object, XX, verb = 0, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -49,15 +51,20 @@ for dynamic tree models
 }
 }
 \details{
-  Returns predictive summary statistics by averaging over the
+  \code{predict} returns predictive summary statistics by averaging over the
   samples from the posterior predictive distribution obtained
   from each of the particles in the cloud pointed to by the
   object (\code{object})
 
+  \cite{coef} returns a matrix of regression coefficients used in linear
+  model leaves (\code{model = "linear"}) leaves, averaged over all particles,
+  for each \code{XX} location. For other models it prints a warning and 
+  defaults to \code{predict}.
+
   The value(s) calculated are appended to \code{object}; the new
   fields are described below
 
-  ALC calculations have been moved to the \code{\link{alc.dynaTree}}
+  Note that ALC calculations have been moved to the \code{\link{alc.dynaTree}}
   function(s)
 }
 \value{
@@ -72,8 +79,11 @@ for dynamic tree models
     
   \item{mean }{ a vector containing an estimate of the predictive mean
     at the \code{XX} locations }
+  \item{vmean }{ a vector containing an estimate of the variance of predictive mean
+    at the \code{XX} locations }
   \item{var }{ a vector containing an estimate of the predictive
-    variance ad the \code{XX} locations }
+    variance (average variance plus variance of mean) at the \code{XX} locations }
+  \item{df }{ a vector containing  the average degrees of freedom at the \code{XX} locations }
   \item{q1 }{ a vector containing an estimate of the 5\% quantile of
     the predictive distribution at the \code{XX} locations,
     unless \code{quants = FALSE}}
@@ -92,7 +102,14 @@ for dynamic tree models
     mean class probabilities for each of \code{max(object$y)} classes
     at the predictive data locations }
   \item{entropy }{ a \code{nrow(XX)} vector of predictive entropys
-    at the predictive data locations}
+    at the predictive data locations};
+
+  For \code{coef} a new \R{XXc} field is created so as not to trample
+  on \code{XX}s that may have been used in a previous \code{predict},
+  plus
+
+  \item{coef }{ a \code{nrow(XX)}-by-\code{m+icept}} matrix of particle-
+  averaged regression coefficients.
 }
 \references{
 

@@ -66,7 +66,8 @@ X <- elec2[,1:4]
 y <- drop(elec2[,5])
 
 ## predictive likelihood for repated trials
-T <- 2000 ## use nrow(X) for a longer version
+T <- 200 ## use nrow(X) for a longer version,
+## short T is for faster CRAN checks
 hits <-  rep(NA, T)
 
 ## fit the initial model

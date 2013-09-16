@@ -1,9 +1,33 @@
+#*******************************************************************************
+#
+# Dynamic trees for learning, design, variable selection, and sensitivity
+# Copyright (C) 2011, The University of Chicago
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Questions? Contact Robert B. Gramacy (rbgramacy@chicagobooth.edu)
+#
+#*******************************************************************************
+
+
 ## dynaTree:
 ##
 ## Initialization and PL for dynamic tree models
 
 dynaTree <-
-  function(X, y, N=1000, model=c("constant", "linear", "class"),
+  function(X, y, N=1000, model=c("constant", "linear", "class", "prior"),
            nu0s20=c(0,0), ab=c(0.95, 2), minp=NULL, sb=NULL,
            nstart=minp, icept=c("implicit", "augmented", "none"),
            rprop=c("luvar", "luall", "reject"), verb=round(length(y)/10))
@@ -18,13 +42,13 @@ dynaTree <-
     model <- match.arg(model)
     if(model == "constant") imodel <- 1
     else if(model == "linear") imodel <- 2
-    else { ## or classify
+    else if(model == "class") { 
       imodel <- 3
       y <- round(y)-1 ## check for sain class labels
       if(any(y < 0)) stop("class labels must start at 1")
       if(length(setdiff(y, 0:max(y))) != 0)
         warning("y without one label in each class")
-    }
+    } else imodel <- 4 ## or sample from prior
 
     ## check splitmin and basemax
     if(!is.null(sb)) {
@@ -38,7 +62,7 @@ dynaTree <-
     if(is.null(minp)) {
       if(model == "constant") minp <- 4
       else if(model == "linear") minp <- 2*sb[2] + 4
-      else minp <- 1 ## for classify
+      else minp <- 1 ## for classify or prior
     } else if(length(minp) != 1 || minp <= 0) stop("minp must be a positive integer")
 
     ## check nstart
@@ -68,9 +92,9 @@ dynaTree <-
     }
 
     ## double check that minp is largest that longest initial run
-    if(model != "class") {
+    if(model != "class" && model != "prior") {
       if(length(unique(y[1:minp])) == 1)
-        stop("initial minp run in y must have at 2 or more unique values")
+        stop("initial minp run in y must have at 2+ unique values")
     }
 
     ## check variance prior parameters 
@@ -388,9 +412,9 @@ setMethod("rejuvenate", "dynaTree", rejuvenate.dynaTree)
 
 "dynaTrees"<-
   function(X, y, N=1000, R=10, sub=length(y),
-           model=c("constant", "linear", "class"), nu0s20=c(0,0),
-           ab=c(0.95, 2), minp=NULL, sb=NULL, nstart=minp,
-           icept=c("implicit", "augmented", "none"),
+           model=c("constant", "linear", "class", "prior"),
+           nu0s20=c(0,0), ab=c(0.95, 2), minp=NULL, sb=NULL,
+           nstart=minp,icept=c("implicit", "augmented", "none"),
            rprop=c("luvar", "luall", "reject"), XX=NULL, yy=NULL,
            varstats=FALSE, lhs=NULL, plotit=FALSE, proj=1, rorder=TRUE,
            verb=round(sub/10), pverb=round(N/10),  ...)
@@ -404,6 +428,8 @@ setMethod("rejuvenate", "dynaTree", rejuvenate.dynaTree)
 
     ## check model
     model <- match.arg(model)
+    if(model == "prior" && !is.null(XX))
+      stop("cannot predict at XX for prior model")
     
     ## check rorder
     if(length(rorder) > 1) {
@@ -509,7 +535,9 @@ setMethod("rejuvenate", "dynaTree", rejuvenate.dynaTree)
           if(obj$model != "class") {
             ## regression collecting
             obj$mean <- cbind(obj$mean, obj2$mean)
+            obj$vmean <- cbind(obj$vmean, obj2$vmean)
             obj$var <- cbind(obj$var, obj2$var)
+            obj$df <- cbind(obj$df, obj2$df)
             obj$q1 <- cbind(obj$q1, obj2$q1)
             obj$q2 <- cbind(obj$q2, obj2$q2)
             obj$alc <- cbind(obj$alc, obj2$alc)
@@ -591,12 +619,13 @@ treestats.dynaTree <- function(object)
     out <- .C("treestats_R",
               cloud = as.integer(object$num),
               avgheight = double(1),
+              avgleaves = double(1),
               avgsize = double(1),
               avgretire = double(1),
               PACKAGE = "dynaTree")
 
-    return(data.frame(avgheight=out$avgheight, avgsize=out$avgsize,
-                      avgretire=out$avgretire))
+    return(data.frame(avgheight=out$avgheight, avgleaves=out$avgleaves,
+                      avgsize=out$avgsize, avgretire=out$avgretire))
   }
 
 setMethod("treestats", "dynaTree", treestats.dynaTree)

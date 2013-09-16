@@ -2,12 +2,13 @@
 \alias{relevance.dynaTree}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-  Rejuvenate the trees/particles
+  Calculate relevance statistics for input coordinates
 }
 \description{
-  Commences a random re-pass through the data stored in the object
-  to generate a new set of particles, which are appended to
-  the old set
+  Computes relevance statistics for each input coordinate by
+  calculating their particle-averaged mean reduction in variance
+  each time that coordinate is used as a splitting variable in
+  (an internal node of) the tree(s)
 }
 \usage{
 relevance.dynaTree(object, rect = NULL, categ = NULL,

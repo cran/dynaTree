@@ -10,6 +10,10 @@
 \alias{ieci.dynaTree}
 \alias{intervals.dynaTree}
 \alias{sameleaf.dynaTree}
+\alias{qEI.dynaTree}
+\alias{qEI}
+\alias{qEntropy.dynaTree}
+\alias{qEntropy}
 \title{Internal dynaTree Functions}
 \description{
   Internal \pkg{dynaTree} functions

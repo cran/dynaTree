@@ -66,8 +66,8 @@ class Cloud
 
   /* prediction and sequential design */
   void Predict(double **XX, double *yy, unsigned int nn, double *mean,
-	       double *var, double *q1, double *q2, double *yypred, 
-	       double *ei, unsigned int verb);
+	       double *vmean, double *var, double *df, double *q1, double *q2, 
+         double *yypred, double *ei, unsigned int verb);
   void IECI(double **XX, unsigned int nn, double **Xref, 
 	    unsigned int nref, double **probs, double *ieci_out, 
 	    unsigned int verb);
@@ -85,6 +85,10 @@ class Cloud
 	    double **S, double **T, unsigned int verb);
   void Relevance(double **rect, int *cat, bool approx, double **delta, 
 	      unsigned int verb);
+  void qEntropy(double q, double **XX, unsigned int nn, double *qentropy, 
+		unsigned int verb);
+  void qEI(double q, double alpha, double **XX, unsigned int nn, 
+	   double *qei, unsigned int verb);
 
   /* retiring particles for online learning */
   void Retire(int *pretire, unsigned int nretire, double lambda, 
@@ -97,13 +101,14 @@ class Cloud
 
   /* prediction for classification */
   void Predict(double **XX, int *yy, unsigned int nn, double **p,
-	       double *yypred, double *entropy, unsigned int verb);
+         double *yypred, double *entropy, unsigned int verb);
+  void Coef(double **XX, unsigned int nn, double **beta, unsigned int verb);
   void Predict(unsigned int cl, double **XX, unsigned int nn, double **p,
 	       double **c, unsigned int verb);
   void Entropy(double *entropy_out, unsigned int verb);
 
   /* information extracting about particles */
-  void TreeStats(double *height, double *avgsize, double *avgretire);
+  void TreeStats(double *height, double *leaves, double *avgsize, double *avgretire);
   void SameLeaf(double **X, unsigned int n, int *counts);
 };
 

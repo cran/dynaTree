@@ -1,3 +1,27 @@
+#*******************************************************************************
+#
+# Dynamic trees for learning, design, variable selection, and sensitivity
+# Copyright (C) 2011, The University of Chicago
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Questions? Contact Robert B. Gramacy (rbgramacy@chicagobooth.edu)
+#
+#*******************************************************************************
+
+
 ## plot.dynaTree:
 ##
 ## plot the contents of a single dynaTree object that
@@ -73,7 +97,7 @@ plot.dynaTree <-
 ## design algorithm in one dimension
 
 plotprogress <- function(x, xstar, ystar, method="alm",
-                         track, f1d, ...)
+                         track, f1d, prec, ...)
 {  
   ## set up to plot
   par(mfrow=c(2,2), mai=c(.8,.7,.2,.1))
@@ -81,6 +105,7 @@ plotprogress <- function(x, xstar, ystar, method="alm",
   ## plot current data and newly chosen point
   plot(x, ylab="y", xlab="x", ...)
   points(xstar, ystar, col=3, pch=20)
+  abline(v=xstar, col=3, lty=2)
   
   ## plot the truth
   o <- order(x$XX)
@@ -94,7 +119,8 @@ plotprogress <- function(x, xstar, ystar, method="alm",
   abline(v=start-0.5, col=2, lty=2)
 
   ## plot active learning statistic
-  plotal(x, method=method, xlab="x")
+  plotal(x, method=method, prec=prec, xlab="x")
+  abline(v=xstar, col=3, lty=2)
 
   ## histogram of X-samples
   hist(x$X, main="", xlab="X samples")
@@ -107,8 +133,8 @@ plotprogress <- function(x, xstar, ystar, method="alm",
 ## plot the active learning heuristic --
 ## ised nu plotprogress
 
-plotal <- function(x, method=c("alm", "alc", "ei", "ieci"), prec=1,
-                   add=FALSE, each=FALSE, root=FALSE, ylim=NULL, ...)
+plotal <- function(x, method=c("alm", "alc", "ei", "ieci", "qEntropy", "qEI"),
+                   prec=1, add=FALSE, each=FALSE, root=FALSE, ylim=NULL, ...)
   {
     ## complete the method argument
     method <- match.arg(method)

@@ -176,13 +176,16 @@ double Cloud::Resample(unsigned int t, unsigned int verb)
   if(pall->Xna && pall->Xna[t] >= 0) xna = pall->XNA[pall->Xna[t]];
 
   /* calculate predictive probabilites and gather statistics */
-  for(unsigned int i=0; i<N; i++) {
-    prob[i] = particle[i]->PostPred(pall->X[t], pall->y[t], xna);
-    pred += prob[i];
+  if(N == 1) { pred = prob[0] = 1.0; prob_var = 0.0; }
+  else {
+    for(unsigned int i=0; i<N; i++) {
+      prob[i] = particle[i]->PostPred(pall->X[t], pall->y[t], xna);
+      pred += prob[i];
+    }
+  
+    /* normalize the weights and calculate their variance */
+    prob_var = norm_weights(prob, N);
   }
-
-  /* normalize the weights and calculate their variance */
-  prob_var = norm_weights(prob, N);
   
   /* resample particles */
   unsigned int np = N; /* no need to resample if all particles
@@ -194,14 +197,14 @@ double Cloud::Resample(unsigned int t, unsigned int verb)
   if(verb > 0 && (t+1+pall->g) % verb == 0){
 
     /* gather tree stats */
-    double height, avgsize, avgretire;
-    TreeStats(&height, &avgsize, &avgretire);
+    double height, leaves, avgsize, avgretire;
+    TreeStats(&height, &leaves, &avgsize, &avgretire);
 
     /* print tree stats */
     if(pall->g > 0) myprintf(mystdout, "t=%d[%d]", t+1+pall->g, t+1);
     else myprintf(mystdout, "t=%d", t+1+pall->g);
-    myprintf(mystdout, ", np=%d, v(w)=%g, avg: depth=%g, size=%g",
-	     np, prob_var, height, avgsize);
+    myprintf(mystdout, ", np=%d, v(w)=%g, avg: depth=%g, leaves=%g, size=%g",
+	     np, prob_var, height, leaves, avgsize);
     if(pall->g > 0) myprintf(mystdout, "(%g)", avgretire);
     myprintf(mystdout, "\n");
     myflush(mystdout);
@@ -372,8 +375,8 @@ void Cloud::Intervals(unsigned int index, unsigned int var, double *a, double *b
  */
 
 void Cloud::Predict(double **XX, double *yy, unsigned int nn, double *mean,
-		    double *var, double *q1, double *q2, double *yypred, 
-		    double *ei, unsigned int verb)
+		    double *vmean, double *var, double *df, double *q1, double *q2, 
+        double *yypred, double *ei, unsigned int verb)
 {
 
   /* quantiles pointers if required */
@@ -387,9 +390,11 @@ void Cloud::Predict(double **XX, double *yy, unsigned int nn, double *mean,
   /* var and mean should be allocated */
   assert(mean); zerov(mean, nn);
   assert(var); zerov(var, nn);
+  assert(vmean); zerov(vmean, nn);
+  assert(df); zerov(df, nn);
   double *meani = new_vector(nn);
   double *vari = new_vector(nn);
-  double *m2 = new_zero_vector(nn);
+  double *dfi = new_vector(nn);
 
   /* predictive probability if required */
   double *yypredi = NULL;
@@ -399,12 +404,11 @@ void Cloud::Predict(double **XX, double *yy, unsigned int nn, double *mean,
   } 
 
   /* t-variance and DoF pointers if required */
-  double *sdi, *dfi;
+  double *sdi;
   if(ei) {
     sdi = new_vector(nn);
     zerov(ei, nn);
-    dfi = new_vector(nn);
-  } else { sdi = dfi = NULL; }
+  } else sdi = NULL;
   unsigned int which;
   double fmin;
 
@@ -421,8 +425,9 @@ void Cloud::Predict(double **XX, double *yy, unsigned int nn, double *mean,
     particle[i]->Predict(XX, yy, nn, meani, sdi, dfi, vari, 
 			 q1i, q2i, yypredi, NULL);
 
-    /* accumulate for mean */
+    /* accumulate for mean and degrees of freedom */
     linalg_daxpy(nn, 1.0, meani, 1, mean, 1);
+    linalg_daxpy(nn, 1.0, dfi, 1, df, 1);
 
     /* accumulate yypred */
     if(yy) linalg_daxpy(nn, 1.0, yypredi, 1, yypred, 1);
@@ -432,13 +437,13 @@ void Cloud::Predict(double **XX, double *yy, unsigned int nn, double *mean,
     if(ei) {
       fmin = min(meani, nn, &which);
       for(unsigned int j=0; j<nn; j++)
-	ei[j] += EI(meani[j], sdi[j], dfi[j], fmin);
+	      ei[j] += EI(meani[j], sdi[j], dfi[j], fmin);
     }
 
     /* accumulate for variance */
     linalg_daxpy(nn, 1.0, vari, 1, var, 1); /* mean of var */
     for(unsigned int j=0; j<nn; j++) meani[j] *= meani[j];
-    linalg_daxpy(nn, 1.0, meani, 1, m2, 1); /* second moment */
+    linalg_daxpy(nn, 1.0, meani, 1, vmean, 1); /* second moment */
 
     /* accumulate for quantiles */
     if(q1) linalg_daxpy(nn, 1.0, q1i, 1, q1, 1);
@@ -449,9 +454,15 @@ void Cloud::Predict(double **XX, double *yy, unsigned int nn, double *mean,
   scalev(mean, nn, 1.0/N);
   if(yy) scalev(yypred, nn, 1.0/N);
   if(ei) scalev(ei, nn, 1.0/N);
-  scalev(m2, nn, 1.0/N);
+  scalev(vmean, nn, 1.0/N);
+  scalev(df, nn, 1.0/N);
   scalev(var, nn, 1.0/N);
-  for(unsigned int j=0; j<nn; j++) var[j] += m2[j] - sq(mean[j]);
+  for(unsigned int j=0; j<nn; j++) {
+    vmean[j] -= sq(mean[j]);
+    if(vmean[j] < 0) vmean[j] = 0;
+    var[j] += vmean[j];
+    if(var[j] < 0) var[j] = 0;
+  }
   if(q1) scalev(q1, nn, 1.0/N);
   if(q2) scalev(q2, nn, 1.0/N);
 
@@ -461,9 +472,52 @@ void Cloud::Predict(double **XX, double *yy, unsigned int nn, double *mean,
   if(q2i) free(q2i);
   free(meani);
   free(vari);
-  free(m2);
   if(sdi) free(sdi);
-  if(dfi) free(dfi);
+  free(dfi);
+}
+
+
+/*
+ * Coef:
+ *
+ * collect the coefficients of the linear model in each particle
+ * according to the XX lpredictive locations
+ */
+
+void Cloud::Coef(double **XX, unsigned int nn, double **beta, unsigned int verb)
+{
+  /* sanity check */
+  assert(pall->model == LINEAR);
+
+  /* dimensions */
+  unsigned int ncoef = pall->m;
+  if(pall->icept) ncoef++;
+
+  /* zero out */
+  assert(beta); zerov(*beta, nn * ncoef);
+  double **betai = new_matrix(nn, ncoef);
+
+  /* predict at the XX locations for each particle */
+  for(unsigned int i=0; i<N; i++) {
+
+    /* print progress if required */
+    if(verb > 0 && (i+1) % verb == 0) {
+      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
+      myflush(mystdout);
+    }
+
+    /* predict at XX */
+    particle[i]->Coef(XX, nn, betai);
+
+    /* accumulate for mean */
+    linalg_daxpy(nn*ncoef, 1.0, *betai, 1, *beta, 1);
+  }
+
+  /* finish variance calculations */
+  scalev(*beta, nn*ncoef, 1.0/N);
+
+  /* clean up */
+  delete_matrix(betai);
 }
 
 
@@ -515,6 +569,84 @@ void Cloud::Predict(double **XX, int *yy, unsigned int nn, double **p,
   if(yypredi) free(yypredi);
   delete_matrix(pi);
   free(ei);
+}
+
+
+/*
+ * qEntropy:
+ *
+ * collect the qEntropy at XX predictive locations
+ */
+
+void Cloud::qEntropy(double q, double **XX, unsigned int nn, 
+		     double *qentropy, unsigned int verb)
+{
+  /* initialize */
+  zerov(qentropy, nn);
+  double *meani = new_vector(nn);
+  double *sdi = new_vector(nn);
+  double *dfi = new_vector(nn);
+
+  /* predict at the XX locations for each particle */
+  for(unsigned int i=0; i<N; i++){
+
+    /* print progress if required */
+    if(verb > 0 && (i+1) % verb == 0) {
+      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
+      myflush(mystdout);
+    }
+
+    /* THESE TWO SETS OF CODE SHOULD BE MOVED INTO A 
+       PARTICLE::QENTROPY function */
+
+    /* predict at XX */
+    particle[i]->Predict(XX, NULL, nn, meani, sdi, dfi, NULL, 
+			 NULL, NULL, NULL, NULL);
+    
+    /* calculate the quantile probability */
+    for(unsigned int j=0; j<nn; j++) {
+      double p = pt((q - meani[j])/sdi[j], dfi[j], 1, 0);
+      // myprintf(mystdout, "%g ", p);
+      if(p == 0.0 || p == 1.0) continue;
+      qentropy[j] += 0.0 - p*log(p) - (1.0-p)*log(1.0-p); 
+    }
+    // myprintf(mystdout, "\n");
+  }
+
+  /* normalize qentropy */
+  scalev(qentropy, nn, 1.0/N);
+
+  /* clean up */
+  free(meani);
+  free(sdi);
+}
+
+
+/*
+ * qEI:
+ *
+ * collect the qEntropy at XX predictive locations
+ */
+
+void Cloud::qEI(double q, double alpha, double **XX, unsigned int nn, 
+		double *qei, unsigned int verb)
+{
+  /* initialize */
+  zerov(qei, nn);
+  /* predict at the XX locations for each particle */
+  for(unsigned int i=0; i<N; i++){
+
+    /* print progress if required */
+    if(verb > 0 && (i+1) % verb == 0) {
+      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
+      myflush(mystdout);
+    }
+
+    particle[i]->qEI(q, alpha, XX, nn, qei);
+  }
+
+  /* normalize qentropy */
+  scalev(qei, nn, 1.0/N);
 }
 
 
@@ -829,7 +961,7 @@ void Cloud::ALC(double **rect, int *cat, bool approx, double *alc_out,
  */
 
 void Cloud::Relevance(double **rect, int *cat, bool approx, double **delta, 
-		   unsigned int verb)
+		      unsigned int verb)
 {
   /* get ALC at XX locations for each particle */
   for(unsigned int i=0; i<N; i++) {
@@ -841,17 +973,19 @@ void Cloud::Relevance(double **rect, int *cat, bool approx, double **delta,
   }
 
   /* calculate the area of the rectangle for normalization */
-  double area = 1.0;
-  if(approx) area = (double) (pall->n + pall->g);
-  else {
-    for(unsigned int j=0; j<pall->bmax; j++) {
-      if(cat[j] || rect[1][j] - rect[0][j] < DOUBLE_EPS) continue;
-      area *= rect[1][j] - rect[0][j];
+  if(pall->model != PRIOR) {
+    double area = 1.0;
+    if(approx) area = (double) (pall->n + pall->g);
+    else {
+      for(unsigned int j=0; j<pall->bmax; j++) {
+	if(cat[j] || rect[1][j] - rect[0][j] < DOUBLE_EPS) continue;
+	area *= rect[1][j] - rect[0][j];
+      }
     }
-  }
 
-  /* now average over the number of particles, and normalize */
-  scalev(*delta, N*(pall->m), 1.0/area);
+    /* now average over the number of particles, and normalize */
+    scalev(*delta, N*(pall->m), 1.0/area);
+  }
 }
 
 
@@ -889,16 +1023,18 @@ void Cloud::Entropy(double *entropy_out, unsigned int verb)
  * node sizes 
  */
 
-void Cloud::TreeStats(double *height, double *avgsize, double *avgretire)\
+void Cloud::TreeStats(double *height, double *leaves, double *avgsize, double *avgretire)\
 {
  /* gather tree stats */
-  *avgretire = *avgsize = *height = 0.0;
+  *avgretire = *avgsize = *leaves = *height = 0.0;
   for(unsigned int i=0; i<N; i++){
+    *leaves += particle[i]->numLeaves();
     *height += particle[i]->getHeight();
     *avgsize += particle[i]->AvgSize();
     if(pall->g > 0) *avgretire += particle[i]->AvgRetired();
   }
   *height /= (double) N;
+  *leaves /= (double) N;
   *avgsize /= (double) N;
   *avgretire /= (double) N;
 }
@@ -1019,7 +1155,7 @@ double norm_weights(double *v, int n)
   double vsum = 0.0;
   for(i=0; i<n; i++) vsum += v[i];
   if(vsum == 0.0 || ISNAN(vsum)) {
-    // assert(0);
+    // error("zero/nan vector or sum in normalize, replacing with unif\n");
     myprintf(mystderr, "zero/nan vector or sum in normalize, replacing with unif\n");
     for(i=0; i<n; i++) v[i] = 1.0/n;
     vsum = 1.0;

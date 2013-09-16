@@ -210,7 +210,9 @@ X <- f[,1:6]
 Z <- f$Y
 
 ## fit the model and do the sensitivity analysis
-out <- dynaTree(X=X, y=Z, N=1000, ab=c(0.01,2))
+N <- 100 ## use N >= 1000 for better results
+## small N is for fast CRAN checks
+out <- dynaTree(X=X, y=Z, N=N, ab=c(0.01,2))
 ## also try with model="linear"
 
 ## gather relevance statistics

@@ -345,6 +345,7 @@ void intervals_R(/* inputs */
 void treestats_R(/* inputs */
 		 int *c_in,
 		 double *height_out,
+     double *leaves_out,
 		 double *avgsize_out,
 		 double *avgretire_out)
 {
@@ -353,7 +354,7 @@ void treestats_R(/* inputs */
     error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
 
-  cloud->TreeStats(height_out, avgsize_out, avgretire_out);
+  cloud->TreeStats(height_out, leaves_out, avgsize_out, avgretire_out);
 }
 
 
@@ -411,8 +412,10 @@ void predict_R(/* inputs */
 	       int *verb_in,
 	       
  	       /* outputs */
-	       double *mean_out,
-	       double *var_out,
+         double *mean_out,
+         double *vmean_out,
+         double *var_out,
+         double *df_out,
 	       int *quants,
 	       double *q1_out,
 	       double *q2_out,
@@ -443,11 +446,61 @@ void predict_R(/* inputs */
   if(*bei == 0.0) ei_out = NULL;
 
   /* predict at the XX locations for each particle */
-  cloud->Predict(XX, yy_in, nn, mean_out, var_out, q1_out, 
-		 q2_out, yypred_out, ei_out, verb);
+  cloud->Predict(XX, yy_in, nn, mean_out, vmean_out, var_out, 
+      df_out, q1_out, q2_out, yypred_out, ei_out, verb);
 
   /* free predictive data */
   free(XX);
+}
+
+
+
+/*
+ * coef_R:
+ *
+ * function to extract regression coefficients  at new XX 
+ * locations based on the c-th particle cloud; returns the 
+ * particle average coefficients 
+ */
+
+void coef_R(/* inputs */
+         int *c_in,
+         double *XX_in,
+         int *nn_in,
+         int *verb_in,
+         
+         /* outputs */
+         double *beta_out)
+{
+  /* IF MISSING DATA THEN NEED TO GET RANDOM SEED */
+
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+  unsigned int m = cloud->pall->m;
+
+  /* check for linear */
+  if(cloud->pall->model != LINEAR) error("coef only valid for linear models");
+
+  /* verbosity argument */
+  unsigned int verb = *verb_in;
+
+  /* data and storage for samples from
+   the posterior predictive distribution */
+  unsigned int nn = (unsigned int) *nn_in;
+  double **XX = new_matrix_bones(XX_in, nn, m);
+  double **beta;
+  if(cloud->pall->icept) beta = new_matrix_bones(beta_out, nn, m+1);
+  else beta = new_matrix_bones(beta_out, nn, m);
+
+  /* predict at the XX locations for each particle */
+  cloud->Coef(XX, nn, beta, verb);
+
+  /* free predictive data */
+  free(XX);
+  free(beta);
 }
 
 
@@ -692,6 +745,89 @@ void entropyX_R(/* inputs */
 
   /* calculate ALC */
   cloud->Entropy(entropy_out, verb);
+}
+
+
+/*
+ * qEntropy_R:
+ *
+ * function to calculate the quantile entropy statistics at 
+ * new XX locations 
+ * 
+ */
+
+void qEntropy_R(/* inputs */
+	       int *c_in,
+	       double *XX_in,
+	       int *nn_in,
+	       double *q_in,
+	       int *verb_in,
+	       
+ 	       /* outputs */
+	       double *qEntropy_out)
+{
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+  unsigned int m = cloud->pall->m;
+
+  /* verbosity argument */
+  unsigned int verb = *verb_in;
+
+  /* data and storage for samples from
+   the posterior predictive distribution */
+  unsigned int nn = (unsigned int) *nn_in;
+  double **XX = new_matrix_bones(XX_in, nn, m);
+
+  /* sanity check */
+  assert(qEntropy_out != NULL);
+
+  /* calculate ALC */
+  cloud->qEntropy(*q_in, XX, nn, qEntropy_out, verb);
+}
+
+
+/*
+ * qEI_R:
+ *
+ * function to calculate the quantile EI statistics at 
+ * new XX locations 
+ * 
+ */
+
+void qEI_R(/* inputs */
+	   int *c_in,
+	   double *XX_in,
+	   int *nn_in,
+	   double *q_in,
+	   double *alpha_in,
+	   int *verb_in,
+	   
+	   /* outputs */
+	   double *qEI_out)
+{
+  /* get the cloud */
+  unsigned int c = *c_in;
+  if(clouds == NULL || clouds[c] == NULL) 
+    error("cloud %d is not allocated\n", c);
+  Cloud *cloud = clouds[c];
+  unsigned int m = cloud->pall->m;
+
+  /* verbosity argument */
+  unsigned int verb = *verb_in;
+
+  /* data and storage for samples from
+   the posterior predictive distribution */
+  unsigned int nn = (unsigned int) *nn_in;
+  double **XX = new_matrix_bones(XX_in, nn, m);
+
+  /* sanity check */
+  assert(qEI_out != NULL);
+
+  /* calculate ALC */
+  cloud->qEI(*q_in, *alpha_in, XX, nn, qEI_out, verb);
 }
 
 

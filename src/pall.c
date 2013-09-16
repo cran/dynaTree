@@ -57,7 +57,6 @@ Pall *new_pall(double **X, unsigned int n, unsigned int m,
   pall->minp = (unsigned int) params[4];
   pall->smin = (unsigned int) params[5] - 1;
   pall->bmax = (unsigned int) params[6];
-  pall->icept = (unsigned int) params[7];
 
   /* deal with NAs */
   pall->nna = nna;
@@ -82,6 +81,8 @@ Pall *new_pall(double **X, unsigned int n, unsigned int m,
   else if(model_in == 3) {
     pall->model = CLASS;
     pall->nc = (unsigned int) max(y, n, &w) + 1;
+  } else if(model_in == 4) {
+    pall->model = PRIOR;
   }
   else {
     warning("model %d not defined, using constant\n", model_in);

@@ -54,6 +54,7 @@ class Particle
  
   /* access tree characteristics */
   int getHeight();
+  int numLeaves();
   double AvgSize();
   double AvgRetired();
   double getT();
@@ -66,6 +67,8 @@ class Particle
 	       double *q2, double *yypred, double *ZZ);
   void EImECI(double **XX, unsigned int nn, double **Xref, 
 	      unsigned int nref, double *probs, double **eimeci);
+  void qEI(double q, double alpha, double **XX, unsigned int nn, 
+	   double *eqi);
   void ALC(double **XX, unsigned int nn, double **Xref, unsigned int nref, 
 	   double *probs, double **alc);
   void ALC(double **XX, unsigned int nn, double **rect, int *cat, bool approx,
@@ -81,7 +84,8 @@ class Particle
 
   /* prediction for classification */
   void Predict(double **XX, int *yy, unsigned int nn, double **p, 
-	       double *yypred, double *entropy);
+         double *yypred, double *entropy);
+  void Coef(double **XX, unsigned int nn, double **beta);
   void Predict(unsigned int cls, double **XX, unsigned int nn,  
 	       double *p, double *ZZ);
   void Sens(unsigned int cls, unsigned int nns, unsigned int aug, 

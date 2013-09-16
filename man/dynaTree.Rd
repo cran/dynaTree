@@ -10,12 +10,12 @@ to regression and classification data by the sequential
 Monte Carlo (SMC) method of particle learning (PL)
 }
 \usage{
-dynaTree(X, y, N = 1000, model = c("constant", "linear", "class"),
+dynaTree(X, y, N = 1000, model = c("constant", "linear", "class", "prior"),
          nu0s20 = c(0,0), ab = c(0.95, 2), minp = NULL, sb = NULL, 
 	 nstart = minp, icept = c("implicit", "augmented", "none"), 
          rprop = c("luvar", "luall", "reject"), verb = round(length(y)/10))
 dynaTrees(X, y, N = 1000,  R = 10, sub = length(y),
-          model = c("constant", "linear", "class"), nu0s20 = c(0,0),
+          model = c("constant", "linear", "class", "prior"), nu0s20 = c(0,0),
           ab=c(0.95, 2), minp = NULL, sb = NULL, nstart = minp,
           icept =  c("implicit", "augmented", "none"),
           rprop = c("luvar", "luall", "reject"), XX = NULL, yy = NULL,
@@ -50,7 +50,8 @@ dynaTrees(X, y, N = 1000,  R = 10, sub = length(y),
   \item{model}{
     indicates the type of model to be used at the leaves of the tree;
     \code{"constant"} and \code{"linear"} apply to regression,
-    and \code{"class"} to multinomial classification
+    and \code{"class"} to multinomial classification; finally \code{"prior"}
+    was recently added to explore sampled without data
 }
  \item{nu0s20}{
    a two-vector indicating Inverse Gamma prior parameters
@@ -211,7 +212,8 @@ dynaTrees(X, y, N = 1000,  R = 10, sub = length(y),
   \item{X }{ a copy of the design matrix \code{X} }
   \item{y }{ a copy of the responses \code{y} }
   \item{model}{ a copy of the specified leaf model }
-  \item{params}{ a 3-vector containing \code{c(alpha, beta, minp)}}
+  \item{params}{ a vector containing \code{c(nu0s20, alpha, beta, minp,
+      sb, icept, rprop)}, where the latter two are in integer form }
   \item{verb }{ a copy of the verbosity argument }
   \item{lpred }{ a vector of \code{log} posterior probabilities
     for each observation, conditional on the ones previous,
@@ -339,14 +341,17 @@ Xm <- mcycle[,1]
 Ym <- mcycle[,2]
 XXm <- seq(min(mcycle[,1]), max(mcycle[,1]), length=100)
 
-## fit constant model with 10 repeats and predictions
-moto.fit <- dynaTrees(Xm, Ym, XX=XXm, plotit=TRUE)
+R <- 2 ## use R >= 10 for better results
+## small R is for faster CRAN checks
+## fit constant model with R=2 repeats and predictions
+moto.fit <- dynaTrees(Xm, Ym, XX=XXm, R=R, plotit=TRUE)
 
 ## plot the averages
 plot(moto.fit, ptype="mean")
 
 ## clouds automatically deleted by dynaTrees
 
+\dontrun{
 ## 2-d/3-class classification data
 library(plgp)
 library(tgp)
@@ -355,8 +360,8 @@ XX <- expand.grid(xx, xx)
 X <- dopt.gp(125, Xcand=XX)$XX
 C <- exp2d.C(X)
 
-## fit a classification model with 3 repeats
-class.fit <- dynaTrees(X, C, XX=XX, R=3, model="class")
+## fit a classification model with R=10 repeats, 
+class.fit <- dynaTrees(X, C, XX=XX, model="class")
 
 ## for plot the output (no generic plotting available)
 cols <- c(gray(0.85), gray(0.625), gray(0.4))
@@ -372,6 +377,7 @@ points(X)
 ment <-  apply(class.fit$entropy, 1, mean)
 image(interp(XX[,1], XX[,2], ment),
       xlab="x1", ylab="x2", main="repeated entropy mean")
+}
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

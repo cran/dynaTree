@@ -208,6 +208,7 @@ class Tree
 
   /* prediction for classification */
   void Predict(double *x, double *pred);
+  void Coef(double *x, double *beta);
   void Predict(double *pred);
   double Predict(double *x, unsigned int cls);
   void Entropy(double *entropy_out);

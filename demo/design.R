@@ -59,7 +59,7 @@ for(t in start:end){
   ystar <- f1d(xstar)
 
   ## plot the progress
-  plotprogress(obj, xstar, ystar, method, track, f1d)
+  plotprogress(obj, xstar, ystar, method, track, f1d, prec)
   
   ## update the fit for the next round
   obj <- update(obj, xstar, ystar)

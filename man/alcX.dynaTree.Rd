@@ -9,7 +9,7 @@
 }
 \description{
   Uses analytic integration (at the leaves) to calculate
-  the (regression) ALC statistic, or calculate the predictive (class) entropy
+  the (regression) ALC statistic, or calculates the predictive (class) entropy
  at the input (X) locations; or calculate ALC at new predictive
  locations either analytically or numerically
 }

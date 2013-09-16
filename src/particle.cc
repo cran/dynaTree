@@ -246,6 +246,25 @@ void Particle::Predict(double **XX, double *yy, unsigned int nn,
 
 
 /*
+ * Coef:
+ *
+ * return the linear regression coefficients for each of the XX locations, 
+* under the tree model in the particle
+ */
+
+void Particle::Coef(double **XX, unsigned int nn, double **beta)
+{
+  /* sanity check */
+  assert(pall->model == LINEAR);
+
+  for(unsigned int i=0; i<nn; i++) {
+
+    /* actually predict */
+    tree->Coef(XX[i], beta[i]);
+  }
+}
+
+/*
  * Predict:
  *
  * classification based prediction and entropy calculation
@@ -466,9 +485,11 @@ void Particle::VarCountTotal(double *c)
     c[leaves[i]->GetVar()] += 1.0;
 
   /* normalize */
-  for(unsigned int j=pall->smin; j<pall->m; j++)
-    c[j] /= ((double) len);
-
+  if(len > 0) {
+    for(unsigned int j=pall->smin; j<pall->m; j++)
+      c[j] /= ((double) len);
+  }
+    
   free(leaves);
 }
 
@@ -558,6 +579,32 @@ void Particle::EImECI(double **XX, unsigned int nn, double **Xref,
 
 
 /*
+ * qEI:
+ *
+ * quantile expected improvement calculation
+ */
+
+void Particle::qEI(double q, double alpha, double **XX, unsigned int nn, 
+		      double *qei) 
+{
+  double mean, sd, df, epsilon, u1, u2;
+
+  for(unsigned int i=0; i<nn; i++) {
+    tree->Predict(XX[i], &mean, &sd, &df);
+    
+    epsilon = alpha * sd * sqrt(df/(df-2.0));
+    u1 = (q - mean - epsilon)/sd;
+    u2 = (q - mean + epsilon)/sd;
+
+    /* assume qei initialized at zeros */
+    qei[i] += (sq(epsilon) - sq(mean - q) - sq(sd))*(pt(u2,df,1,0) - pt(u1,df,1,0));
+    qei[i] += sq(sd)*(u2*dt(u2,df,0) - u1*dt(u1,df,0));
+    qei[i] += 2.0*(mean - q)*sd*(dt(u2,df,0) - dt(u1,df,0));
+  }
+}
+
+
+/*
  * ALC:
  *
  * accumulate the (un-normalized) Active Learning Cohn
@@ -625,6 +672,9 @@ void Particle::Entropy(double *entropy)
 
 /* return the height of the tree in the particle */
 int Particle::getHeight(void){ return tree->Height(); }
+
+/* return the height of the tree in the particle */
+int Particle::numLeaves(void){ return tree->numLeaves(); }
 
 /* calculate the average size of the leaves of the tree */
 double Particle::AvgSize(void){ return tree->leavesAvgSize(); }

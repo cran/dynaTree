@@ -22,6 +22,8 @@
 \alias{copy,dynaTree-method}
 \alias{alcX,dynaTree-method}
 \alias{alc,dynaTree-method}
+\alias{qEI,dynaTree-method}
+\alias{qEntropy,dynaTree-method}
 \alias{entropyX,dynaTree-method}
 \alias{ieci,dynaTree-method}
 \alias{classprobs,dynaTree-method}

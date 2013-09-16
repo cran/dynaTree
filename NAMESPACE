@@ -8,7 +8,8 @@ export(alc, alc.dynaTree, alcX, alcX.dynaTree, deletecloud,
        relevance, relevance.dynaTree, retire, retire.dynaTree,
        sens, sens.dynaTree, treestats, treestats.dynaTree,
        alcalc, plotprogress, varpropuse, varpropuse.dynaTree,
-       varproptotal, varproptotal.dynaTree)
+       varproptotal, varproptotal.dynaTree, qEntropy, 
+       qEntropy.dynaTree, qEI, qEI.dynaTree)
 
 # Import all packages listed as Imports or Depends
 import(
@@ -21,6 +22,7 @@ S3method(alcX, dynaTree)
 S3method(copy, dynaTree)
 S3method(plot, dynaTree)
 S3method(predict, dynaTree)
+S3method(coef, dynaTree)
 S3method(rejuvenate, dynaTree)
 S3method(relevance, dynaTree)
 S3method(retire, dynaTree)
@@ -28,3 +30,5 @@ S3method(sens, dynaTree)
 S3method(update, dynaTree)
 S3method(varpropuse, dynaTree)
 S3method(varproptotal, dynaTree)
+S3method(qEntropy, dynaTree)
+S3method(qEI, dynaTree)

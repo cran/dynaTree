@@ -1,3 +1,22 @@
+1.2-7 (16 Sept 2013)
+-----
+
+added variance of mean and DoF outputs to predict_R for
+regression models
+
+correction of title and description in relevance doc file
+
+implementing qEntropy and other active learning stats
+for learning about contours
+
+fixed bug in tree proposals when tree prior a=0
+
+added coef.dynaTree function to extract coefficients from
+linear leaf models
+
+added average number of leaves to treestats
+
+
 1.2-6 (21 April 2012)
 -----
 

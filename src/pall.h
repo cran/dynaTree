@@ -29,7 +29,7 @@
 #define INF 1e300*1e300
 
 /* types of models supported */
-typedef enum Model {CONSTANT=1001, LINEAR=1002, CLASS=1003} Model;
+typedef enum Model {CONSTANT=1001, LINEAR=1002, CLASS=1003, PRIOR=1004} Model;
 typedef enum RProp {LUALL=1001, LUVAR=1002, REJECT=1003} RProp;
 
 typedef struct pall {

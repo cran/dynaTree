@@ -1,3 +1,27 @@
+#*******************************************************************************
+#
+# Dynamic trees for learning, design, variable selection, and sensitivity
+# Copyright (C) 2011, The University of Chicago
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Questions? Contact Robert B. Gramacy (rbgramacy@chicagobooth.edu)
+#
+#*******************************************************************************
+
+
 ## predict.dynaTree:
 ##
 ## generic prediction function for new data XX --
@@ -69,7 +93,9 @@ predict.dynaTree <- function(object, XX, yy=NULL, quants=TRUE,
                  nn = as.integer(nn),
                  verb = as.integer(verb),
                  mean = double(nn),
+                 vmean = double(nn),
                  var = double(nn),
+                 df = double(nn),
                  quants = as.integer(quants),
                  q1 = double(nn*quants),
                  q2 = double(nn*quants),
@@ -80,7 +106,9 @@ predict.dynaTree <- function(object, XX, yy=NULL, quants=TRUE,
       
       ## combine pred with object
       object$mean <- pred$mean
+      object$vmean <- pred$vmean
       object$var <- pred$var
+      object$df <- pred$df
       object$q1 <- pred$q1
       object$q2 <- pred$q2
       object$yypred <- pred$yypred
@@ -97,6 +125,53 @@ predict.dynaTree <- function(object, XX, yy=NULL, quants=TRUE,
     ## update time
     ## object$time <- object$time + proc.time()[3] - p1
     
+    ## return
+    invisible(object)
+  }
+
+
+## coef.dynaTree:
+##
+## generic coef function for new data XX --
+## note coefficients are input-dependent --
+## uses the existing obj$num C-side cloud which
+## must not have been deleted;  coeffs returned are
+## averaged over particles
+
+coef.dynaTree <- function(object, XX, verb=0, ...)
+  {
+    ## special handling for classification
+    if(object$model == "class" || object$model == "constant") {
+      warning("coef and predict are the same for classification & constant models")
+      return(predict(object, XX, verb=verb, ...))
+    } 
+
+    ## make sure object$num is defined
+    if(is.null(object$num)) stop("no cloud number in object")
+    
+    ## extract the vitals of XX
+    XX <- as.matrix(XX)
+    nn <- nrow(XX)
+    if(object$icept == "augmented") {
+      XX <- cbind(rep(1,nn), XX)
+      m <- object$m
+    } else if(object$icept == "none") m <- object$m 
+    else m <- object$m + 1
+    if(ncol(XX) != object$m) stop("XX has bad dimensions");
+
+    ## call the C-side predict routine
+    pred <- .C("coef_R",
+               cloud = as.integer(object$num),
+               XX = as.double(t(XX)),
+               nn = as.integer(nn),
+               verb = as.integer(verb),
+               beta = double(nn * m),
+               PACKAGE = "dynaTree")
+
+    ## put originals back
+    object$XXc <- XX
+    object$coef <- matrix(pred$beta, ncol=m, byrow=TRUE)
+
     ## return
     invisible(object)
   }
@@ -613,6 +688,120 @@ entropyX.dynaTree <- function(object, verb=0)
 setMethod("entropyX", "dynaTree", entropyX.dynaTree)
 
 
+## qEntropy.dynaTree:
+##
+## quantile-based entropy calculation; uses the existing obj$num
+## C-side cloud which must not have been deleted
+
+setGeneric("qEntropy",
+            function(object, ...)
+            standardGeneric("qEntropy")
+            )
+
+qEntropy.dynaTree <- function(object, XX, q=0, verb=0)
+  {
+    ## make sure object$num is defined
+    if(is.null(object$num)) stop("no cloud number in object")
+    
+    ## for timing purposes
+    p1 <- proc.time()[3]
+
+    ## extract the vitals of XX
+    XX <- as.matrix(XX)
+    nn <- nrow(XX)
+    if(object$icept == "augmented") XX <- cbind(rep(1,nn), XX)
+    if(ncol(XX) != object$m) stop("XX has bad dimensions");
+
+    ## check q
+    if(length(q) != 1) stop("q must be a scalar")
+    
+    ## sanity check
+    if(object$model == "class") stop("only used by regression models")
+
+    ## call the C-side predict routine
+    pred <- .C("qEntropy_R",
+               cloud = as.integer(object$num),
+               XX = as.double(t(XX)),
+               nn = as.integer(nn),
+               q = as.double(q),
+               verb = as.integer(verb),
+               qEntropy = double(nrow(XX)),
+               PACKAGE = "dynaTree")
+      
+    ## combine pred with object
+    object$qEntropy <- pred$qEntropy
+
+    ## put originals back
+    object$XX <- XX
+               
+    ## update time
+    object$time <- object$time + proc.time()[3] - p1
+    
+    ## return
+    invisible(object)
+  }
+
+setMethod("qEntropy", "dynaTree", qEntropy.dynaTree)
+
+
+## qEI.dynaTree:
+##
+## quantile-based EI calculation; uses the existing obj$num
+## C-side cloud which must not have been deleted
+
+setGeneric("qEI",
+            function(object, ...)
+            standardGeneric("qEI")
+            )
+
+qEI.dynaTree <- function(object, XX, q=0, alpha=2, verb=0)
+  {
+    ## make sure object$num is defined
+    if(is.null(object$num)) stop("no cloud number in object")
+    
+    ## for timing purposes
+    p1 <- proc.time()[3]
+
+    ## extract the vitals of XX
+    XX <- as.matrix(XX)
+    nn <- nrow(XX)
+    if(object$icept == "augmented") XX <- cbind(rep(1,nn), XX)
+    if(ncol(XX) != object$m) stop("XX has bad dimensions");
+
+    ## check q and alpha
+    if(length(q) != 1) stop("q must be a scalar")
+    if(length(alpha != 1) && alpha <= 0) stop("alpha must be a positive scalar")
+    
+    ## sanity check
+    if(object$model == "class") stop("only used by regression models")
+
+    ## call the C-side predict routine
+    pred <- .C("qEI_R",
+               cloud = as.integer(object$num),
+               XX = as.double(t(XX)),
+               nn = as.integer(nn),
+               q = as.double(q),
+               alpha = as.double(alpha),
+               verb = as.integer(verb),
+               qEI = double(nrow(XX)),
+               PACKAGE = "dynaTree")
+      
+    ## combine pred with object
+    object$qEI <- pred$qEI
+
+    ## put originals back
+    object$XX <- XX
+               
+    ## update time
+    object$time <- object$time + proc.time()[3] - p1
+    
+    ## return
+    invisible(object)
+  }
+
+setMethod("qEI", "dynaTree", qEI.dynaTree)
+
+
 ## sens.dynaTree:
 ##
 ## sensity analysis for dynaTree models
@@ -902,7 +1091,8 @@ setMethod("sameleaf", "dynaTree", sameleaf.dynaTree)
 ## extract the active learning heuristic over
 ## the XX space
 
-alcalc <- function(obj, method=c("alm", "alc", "ei", "ieci"), prec=1)
+alcalc <- function(obj, method=c("alm", "alc", "ei", "ieci", "qEntropy", "qEI"),
+                   prec=1)
   {
     ## check the method argument
     method <- match.arg(method)
@@ -911,6 +1101,8 @@ alcalc <- function(obj, method=c("alm", "alc", "ei", "ieci"), prec=1)
     else if(method == "ei" && prec > 0) return(obj$ei + sqrt(obj$var)/prec)
     else if(method == "ei") return(obj$ei)
     else if(method == "ieci") return(obj$ieci)
+    else if(method == "qEntropy") return(obj$qEntropy)
+    else if(method == "qEI") return(obj$qEI)
     else return(obj$var)
   }
 

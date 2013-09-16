@@ -90,7 +90,7 @@ Matt Taddy \email{taddy@chicagobooth.edu}}
 \examples{
 n <- 100
 Xp <- runif(n,-3,3)
-XX <- seq(-3,3, length=500)
+XX <- seq(-3,3, length=200)
 Yp <- Xp + Xp^2 + rnorm(n, 0, .2)
 rect <- c(-3,3)
 out <- dynaTree(Xp, Yp, model="linear", icept="augmented")

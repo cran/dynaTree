@@ -63,9 +63,11 @@ Yp <- Xp + Xp^2 + rnorm(n, 0, .2)
 XXp <- seq(-3,3,length=100)
 
 ## comparison by log Bayes Factor
-o <- apply(matrix(runif(n*9), ncol=9), 2, order)
-lpc.p <- dynaTrees(Xp, Yp, rorder=o, verb=0)
-lpl.p <- dynaTrees(Xp, Yp, model="linear", rorder=o, verb=0)
+R <- 2 ## use R >= 10 for better results
+## small R is for faster CRAN checks
+o <- apply(matrix(runif(n*(R-1)), ncol=R-1), 2, order)
+lpc.p <- dynaTrees(Xp, Yp, R=R, rorder=o, verb=0)
+lpl.p <- dynaTrees(Xp, Yp, model="linear", R=R, rorder=o, verb=0)
 bf.p <- getBF(lpl.p, lpc.p)
 
 ## plot the log Bayes factors

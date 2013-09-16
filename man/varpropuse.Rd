@@ -40,7 +40,7 @@
 \value{
   For \code{varprop*}, a
   vector of proportions of length \code{ncol(object$X))} is returned;
-  for \code{treestats} a 1-row, 3-column \code{\link{data.frame}} is
+  for \code{treestats} a 1-row, 4-column \code{\link{data.frame}} is
   returned
 }
 \references{

@@ -491,7 +491,8 @@ void Tree::grow(int var, double val)
 
   /* grow the children; stop if partition too small */
   bool success = grow_children(false);
-  assert(success); success = TRUE; /* for NDEBUG */
+  assert(success); 
+  success = TRUE; /* for NDEBUG */
   assert(leftChild->n + rightChild->n == n);
 
   /* clear p and and other data */
@@ -624,7 +625,7 @@ double Tree::growProb(int *gvar, double *gval)
   Pall *pall = particle->pall;
 
   /* check if we're allowing grows */
-  if(pall->a <= 0 || pall->b <= 0) return 0.0;
+  if(pall->a <= 0 || pall->b <= 0) return -INF;
 
   /* choose the split var and val */
   if(!ChooseVarVal()) return -INF;
@@ -1075,6 +1076,9 @@ double Tree::Posterior(void) /* log post! */
 #endif
   Pall *pall = particle->pall;
   assert(n + ng >= pall->minp);
+
+  /* no nothing if prior */
+  if(pall->model == PRIOR) return 0.0;
 
   /* special classification treatment */
   if(pall->model == CLASS) {
@@ -1657,6 +1661,9 @@ double Tree::PostPred(double *x, double y)
   assert(n + ng >= pall->minp);
   double dn = (double) n;
 
+  /* do nothing for prior */
+  if(pall->model == PRIOR) return 1.0;
+
   /* special handling of classification */
   if(pall->model == CLASS) {
     double dm = (double) pall->nc;
@@ -2110,6 +2117,38 @@ void Tree::Predict(double *x, double *mean_out, double *sd_out, double *df_out)
 
 
 /*
+ * Coef:
+ *
+ * extract the linear model coefficients at x 
+ */
+
+void Tree::Coef(double *x, double *beta)
+{
+   if(isLeaf()) {
+
+     /* pall of the particle this tree belongs to */
+     Pall *pall = particle->pall;
+
+     /* this is the wrong predict function for classification */
+     assert(pall->model == LINEAR);
+
+     if(pall->icept) {
+      dupv(beta+1, bmu, pall->bmax);
+      beta[0] = (sy/((double) n)) - linalg_ddot(pall->bmax, xmean, 1, bmu, 1); 
+     } else {
+      dupv(beta, bmu, pall->bmax);
+     }
+
+   } else {
+     if(x[this->var] <= val) 
+       return leftChild->Coef(x, beta);
+     else 
+       return rightChild->Coef(x, beta);
+   }
+}
+
+
+/*
  * Predict:
  *
  * prediction for classification
@@ -2323,8 +2362,8 @@ double Tree::ALC(double *x, double **rect, int *cat, bool approx)
        LinearAdjust(x, NULL, &xtXtXix, y, NULL);
        /* now y is XtXix */
        if(xmean) { /* adjust rectangle by xmean */
-	 linalg_daxpy(pall->bmax,0.0-1.0,xmean,1,rect[0],1);
-	 linalg_daxpy(pall->bmax,0.0-1.0,xmean,1,rect[1],1);
+	       linalg_daxpy(pall->bmax,0.0-1.0,xmean,1,rect[0],1);
+	       linalg_daxpy(pall->bmax,0.0-1.0,xmean,1,rect[1],1);
        }
      }
 
@@ -2408,9 +2447,9 @@ void Tree::ALC(double **rect, int *cat, bool approx, double *alc_out)
       
       /* adjustments to above under the linear model */
       if(pall->model == LINEAR) { 
-	xtXtXix = c;
-	LinearAdjust(pall->X[p[i]], NULL, &xtXtXix, y, NULL);
-	/* now y is XtXix */
+	       xtXtXix = c;
+	       LinearAdjust(pall->X[p[i]], NULL, &xtXtXix, y, NULL);
+	       /* now y is XtXix */
       }
       
       /* do the ALC integration analytically */
@@ -2517,10 +2556,13 @@ double Tree::Relevance(double **rect, int *cat, bool approx, double *delta)
   /* averave variance calculation for this node */
   double pav;
   if(particle->pall->model == CLASS) pav = AvgEntropy(rect, cat, approx);
+  else if(particle->pall->model == PRIOR) pav = 0.0;
   else pav = AvgVar(rect, cat, approx);  
 
   /* accumulate reduction in variance for split */
-  double reduce = pav - lcav - rcav;
+  double reduce;
+  if(particle->pall->model == PRIOR) reduce = 1.0;
+  else reduce = pav - lcav - rcav;
   // if(reduce < 0) reduce = 0;
   if(!isLeaf()) delta[var] += reduce;
 
@@ -2705,7 +2747,7 @@ double Tree::leavesAvgRetired(void)
     first = first->next;
   }
   // myprintf(stderr, "%g ", size/((double)numLeaves));
-  return size/((double) numLeaves);
+  return size/((double) (numLeaves));
 }
 
 
