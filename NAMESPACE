@@ -16,6 +16,11 @@ import(
   methods
 )
 
+## required for new CRAN checks
+importFrom("graphics", "abline", "hist", "lines", "par", "plot",
+           "points")
+importFrom("stats", "predict", "runif")
+
 # S3
 S3method(alc, dynaTree)
 S3method(alcX, dynaTree)

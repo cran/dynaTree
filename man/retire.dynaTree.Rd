@@ -69,16 +69,17 @@
   returns a \code{"dynaTree"}-class object with updated attributes
 }
 \references{
-  Taddy, M.A., Gramacy, R.B., and Polson, N. (2011).
-  \dQuote{Dynamic trees for learning and design}
-  Journal of the American Statistical Association, 106(493), pp. 109-123;
-  arXiv:0912.1586 
 
-  \url{http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html}
+  Anagnostopoulos, C., Gramacy. R.B. (2013) \dQuote{Information-Theoretic 
+  Data Discarding for Dynamic Trees on Data Streams.} Entropy, 15(12), 
+  5510-5535; arXiv:1201.5568
+
+  \url{http://bobby.gramacy.com/r_packages/dynaTree/}
 }
 \author{
-Robert B. Gramacy \email{rbgramacy@chicagobooth.edu} and\cr
-Matt Taddy \email{taddy@chicagobooth.edu}}
+Robert B. Gramacy \email{rbgramacy@chicagobooth.edu}, \cr
+Matt Taddy \email{taddy@chicagobooth.edu}, and \cr
+Christoforos Anagnostopoulos \email{christoforos.anagnostopoulos06@imperial.ac.uk}}
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 

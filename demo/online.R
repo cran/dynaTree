@@ -65,7 +65,7 @@ for(i in 1:more) {
   Yall <- c(Yall, Yp)
 
   ## update random and ALC estimators with new point
-  rr <- update( rr, Xp, Yp, verb=100)
+  rr <- update(rr, Xp, Yp, verb=100)
   ralc <- update(ralc, Xp, Yp, verb=100)
 }
 

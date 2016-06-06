@@ -43,8 +43,9 @@ deleteclouds()
   returns a copy of a \code{"dynaTree"}-class object
 }
 \author{
-  Robert B. Gramacy \email{rbgramacy@chicagobooth.edu} and\cr
-  Matt Taddy \email{taddy@chicagobooth.edu}
+Robert B. Gramacy \email{rbgramacy@chicagobooth.edu},\cr
+Matt Taddy \email{taddy@chicagobooth.edu}, and \cr
+Christoforos Anagnostopoulos \email{christoforos.anagnostopoulos06@imperial.ac.uk}
 }
 
 \seealso{

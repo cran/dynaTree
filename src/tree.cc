@@ -105,15 +105,15 @@ Tree::Tree(Particle *particle_in, int *p, unsigned int n, Tree* parent_in)
   /* cap contribution of retired stats */
   // CapRetired();
 
-  /* dummy initial values for const sufficient stats */
+  /* dumMY initial values for const sufficient stats */
   syy = sy = 0.0;
 
-  /* dummy initial values for linear extended stats */
+  /* dumMY initial values for linear extended stats */
   bb = ldet_XtXi = 0.0;
   XtX = XtXi = NULL;
   Xty = bmu = xmean = NULL;
 
-  /* dummy initial values for classifications stats */
+  /* dumMY initial values for classifications stats */
   counts = NULL;
 
   /* tree pointers */
@@ -460,6 +460,7 @@ int Tree::leavesN(void)
   int numLeaves = 0;
   numLeaves = leaves(&first, &last);
   assert(numLeaves > 0);
+  if(numLeaves <= 0) MYprintf(MYstdout, "numleaves <= 0\n"); 
   int N = 0;
   while(first) {
     N += first->n;
@@ -482,7 +483,7 @@ void Tree::grow(int var, double val)
   assert(isLeaf());
 #endif
 
-  if(!R_FINITE(val)) myprintf(mystdout, "inf val in grow\n");
+  if(!R_FINITE(val)) MYprintf(MYstdout, "inf val in grow\n");
     
   /* assign the split */
   assert(var >= (int) particle->pall->smin);
@@ -492,6 +493,7 @@ void Tree::grow(int var, double val)
   /* grow the children; stop if partition too small */
   bool success = grow_children(false);
   assert(success); 
+  if(!success) MYprintf(MYstdout, "grow_children failed\n");
   success = TRUE; /* for NDEBUG */
   assert(leftChild->n + rightChild->n == n);
 
@@ -1098,12 +1100,12 @@ double Tree::Posterior(void) /* log post! */
     } else { /* no retires */
       post -= lgamma(((double) n) + 1.0);
       for(unsigned int i=0; i<pall->nc; i++) {
-	// myprintf(mystdout, "%d ", counts[i]);
+	// MYprintf(MYstdout, "%d ", counts[i]);
 	double dci = (double) counts[i];
 	post += lgamma(dci + 1.0/dm); // - lgamma(dci + 1.0);
       }
       post -= dm * lgamma(1.0/dm);
-      // myprintf(mystdout, "lpost=%g\n", post);
+      // MYprintf(MYstdout, "lpost=%g\n", post);
     }
     return post;
   }
@@ -1367,7 +1369,7 @@ Tree* Tree::RetireDatum(unsigned int index, double lambda)
 
 void Tree::Collapse(void)
 {
-  myprintf(mystdout, "collapsing: lost retired information in leaf\n");
+  MYprintf(MYstdout, "collapsing: lost retired information in leaf\n");
   /* sanity check */
   assert(isLeaf());
 
@@ -2104,7 +2106,7 @@ void Tree::Predict(double *x, double *mean_out, double *sd_out, double *df_out)
      assert(*sd_out > 0);
      *mean_out = mean;
 
-     /* myprintf(mystdout, "mean=%g, s2numer=%g, df=%g, xtXtXix=%g, sd=%g\n", 
+     /* MYprintf(MYstdout, "mean=%g, s2numer=%g, df=%g, xtXtXix=%g, sd=%g\n", 
 	mean, s2numer, df, xtXtXix, *sd_out); */
 
    } else {
@@ -2746,7 +2748,7 @@ double Tree::leavesAvgRetired(void)
     size += first->ng;
     first = first->next;
   }
-  // myprintf(stderr, "%g ", size/((double)numLeaves));
+  // MYprintf(stderr, "%g ", size/((double)numLeaves));
   return size/((double) (numLeaves));
 }
 

@@ -46,6 +46,10 @@
 }
 \references{
 
+  Anagnostopoulos, C., Gramacy. R.B. (2013) \dQuote{Information-Theoretic 
+  Data Discarding for Dynamic Trees on Data Streams.} Entropy, 15(12), 
+  5510-5535; arXiv:1201.5568
+
   M. Baena-Garcia, J. del Campo-Avila, R., Fidalgo, A. Bifet,
   R. Gavalda and R. Morales-Bueno. \dQuote{Early drift detection
     method}. \emph{ECML PKDD 2006 Workshop on Knowledge Discovery from

@@ -23,10 +23,11 @@
  ****************************************************************************/
 
 
+#include <Rmath.h>
+#include <R.h>
 extern "C" {
 #include "rhelp.h"
-#include "R.h"
-#include "Rmath.h"
+// #include "R.h"
 #include "assert.h"
 #include "linalg.h"
 #include <stdlib.h>
@@ -201,13 +202,13 @@ double Cloud::Resample(unsigned int t, unsigned int verb)
     TreeStats(&height, &leaves, &avgsize, &avgretire);
 
     /* print tree stats */
-    if(pall->g > 0) myprintf(mystdout, "t=%d[%d]", t+1+pall->g, t+1);
-    else myprintf(mystdout, "t=%d", t+1+pall->g);
-    myprintf(mystdout, ", np=%d, v(w)=%g, avg: depth=%g, leaves=%g, size=%g",
+    if(pall->g > 0) MYprintf(MYstdout, "t=%d[%d]", t+1+pall->g, t+1);
+    else MYprintf(MYstdout, "t=%d", t+1+pall->g);
+    MYprintf(MYstdout, ", np=%d, v(w)=%g, avg: depth=%g, leaves=%g, size=%g",
 	     np, prob_var, height, leaves, avgsize);
-    if(pall->g > 0) myprintf(mystdout, "(%g)", avgretire);
-    myprintf(mystdout, "\n");
-    myflush(mystdout);
+    if(pall->g > 0) MYprintf(MYstdout, "(%g)", avgretire);
+    MYprintf(MYstdout, "\n");
+    MYflush(MYstdout);
   }
 
   /* return marginal likelihood contribution */
@@ -317,8 +318,8 @@ void Cloud::Retire(int *pretire, unsigned int nretire, double lambda,
 
   /* print how many will be removed */
   if(verb > 0) {
-    myprintf(mystdout, "Retiring %d observations: ");
-    printIVector(pretire, nretire, mystdout);
+    MYprintf(MYstdout, "Retiring %d observations: ");
+    printIVector(pretire, nretire, MYstdout);
   }
 
   /* for each index to be chosted */
@@ -329,8 +330,8 @@ void Cloud::Retire(int *pretire, unsigned int nretire, double lambda,
 
     /* print the index and X and y values that are being removed */
     if(verb > 0) {
-      myprintf(mystdout, "removing y=%g and X=", pall->y[pretire[i]]);
-      printVector(pall->X[pretire[i]], pall->m, mystdout, HUMAN);
+      MYprintf(MYstdout, "removing y=%g and X=", pall->y[pretire[i]]);
+      printVector(pall->X[pretire[i]], pall->m, MYstdout, HUMAN);
     }
 
     /* remove from each particle */
@@ -417,8 +418,8 @@ void Cloud::Predict(double **XX, double *yy, unsigned int nn, double *mean,
 
     /* print progress if required */
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
-      myflush(mystdout);
+      MYprintf(MYstdout, "prediction %d of %d done\n", i+1, N);
+      MYflush(MYstdout);
     }
 
     /* predict at XX */
@@ -502,8 +503,8 @@ void Cloud::Coef(double **XX, unsigned int nn, double **beta, unsigned int verb)
 
     /* print progress if required */
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
-      myflush(mystdout);
+      MYprintf(MYstdout, "prediction %d of %d done\n", i+1, N);
+      MYflush(MYstdout);
     }
 
     /* predict at XX */
@@ -547,8 +548,8 @@ void Cloud::Predict(double **XX, int *yy, unsigned int nn, double **p,
 
     /* print progress if required */
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
-      myflush(mystdout);
+      MYprintf(MYstdout, "prediction %d of %d done\n", i+1, N);
+      MYflush(MYstdout);
     }
 
     /* predict at XX */
@@ -592,8 +593,8 @@ void Cloud::qEntropy(double q, double **XX, unsigned int nn,
 
     /* print progress if required */
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
-      myflush(mystdout);
+      MYprintf(MYstdout, "prediction %d of %d done\n", i+1, N);
+      MYflush(MYstdout);
     }
 
     /* THESE TWO SETS OF CODE SHOULD BE MOVED INTO A 
@@ -606,11 +607,11 @@ void Cloud::qEntropy(double q, double **XX, unsigned int nn,
     /* calculate the quantile probability */
     for(unsigned int j=0; j<nn; j++) {
       double p = pt((q - meani[j])/sdi[j], dfi[j], 1, 0);
-      // myprintf(mystdout, "%g ", p);
+      // MYprintf(MYstdout, "%g ", p);
       if(p == 0.0 || p == 1.0) continue;
       qentropy[j] += 0.0 - p*log(p) - (1.0-p)*log(1.0-p); 
     }
-    // myprintf(mystdout, "\n");
+    // MYprintf(MYstdout, "\n");
   }
 
   /* normalize qentropy */
@@ -638,8 +639,8 @@ void Cloud::qEI(double q, double alpha, double **XX, unsigned int nn,
 
     /* print progress if required */
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
-      myflush(mystdout);
+      MYprintf(MYstdout, "prediction %d of %d done\n", i+1, N);
+      MYflush(MYstdout);
     }
 
     particle[i]->qEI(q, alpha, XX, nn, qei);
@@ -667,8 +668,8 @@ void Cloud::Predict(unsigned int cl, double **XX, unsigned int nn, double **p,
 
     /* print progress if required */
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
-      myflush(mystdout);
+      MYprintf(MYstdout, "prediction %d of %d done\n", i+1, N);
+      MYflush(MYstdout);
     }
 
     /* predict at XX */
@@ -703,8 +704,8 @@ void Cloud::Sens(int *cls, unsigned int nns, unsigned int aug,
 
     /* print progress if required */
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
-      myflush(mystdout);
+      MYprintf(MYstdout, "prediction %d of %d done\n", i+1, N);
+      MYflush(MYstdout);
     }
 
     /* sensitivity within the particle */
@@ -818,8 +819,8 @@ void Cloud::IECI(double **XX, unsigned int nn, double **Xref,
   double *pi;
   for(unsigned int i=0; i<N; i++){
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
-      myflush(mystdout);
+      MYprintf(MYstdout, "prediction %d of %d done\n", i+1, N);
+      MYflush(MYstdout);
     }
     if(probs) pi = probs[i];
     else pi = NULL;
@@ -856,8 +857,8 @@ void Cloud::ALC(double **XX, unsigned int nn, double **Xref,
   double *pi;
   for(unsigned int i=0; i<N; i++){
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
-      myflush(mystdout);
+      MYprintf(MYstdout, "prediction %d of %d done\n", i+1, N);
+      MYflush(MYstdout);
     }
     if(probs) pi = probs[i];
     else pi = NULL;
@@ -892,8 +893,8 @@ void Cloud::ALC(double **XX, unsigned int nn, double **rect,
   /* accumulate ALC at XX locations for each particle */
   for(unsigned int i=0; i<N; i++){
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
-      myflush(mystdout);
+      MYprintf(MYstdout, "prediction %d of %d done\n", i+1, N);
+      MYflush(MYstdout);
     }
     particle[i]->ALC(XX, nn, rect, cat, approx, alc_out);
   }
@@ -931,8 +932,8 @@ void Cloud::ALC(double **rect, int *cat, bool approx, double *alc_out,
   /* accumulate ALC at XX locations for each particle */
   for(unsigned int i=0; i<N; i++) {
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
-      myflush(mystdout);
+      MYprintf(MYstdout, "prediction %d of %d done\n", i+1, N);
+      MYflush(MYstdout);
     }
     particle[i]->ALC(rect, cat, approx, alc_out);
   }
@@ -966,8 +967,8 @@ void Cloud::Relevance(double **rect, int *cat, bool approx, double **delta,
   /* get ALC at XX locations for each particle */
   for(unsigned int i=0; i<N; i++) {
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(mystdout, "relevance %d of %d done\n", i+1, N);
-      myflush(mystdout);
+      MYprintf(MYstdout, "relevance %d of %d done\n", i+1, N);
+      MYflush(MYstdout);
     }
     particle[i]->Relevance(rect, cat, approx, delta[i]);
   }
@@ -1005,8 +1006,8 @@ void Cloud::Entropy(double *entropy_out, unsigned int verb)
   /* accumulate ALC at XX locations for each particle */
   for(unsigned int i=0; i<N; i++) {
     if(verb > 0 && (i+1) % verb == 0) {
-      myprintf(mystdout, "prediction %d of %d done\n", i+1, N);
-      myflush(mystdout);
+      MYprintf(MYstdout, "prediction %d of %d done\n", i+1, N);
+      MYflush(MYstdout);
     }
     particle[i]->Entropy(entropy_out);
   }
@@ -1156,7 +1157,7 @@ double norm_weights(double *v, int n)
   for(i=0; i<n; i++) vsum += v[i];
   if(vsum == 0.0 || ISNAN(vsum)) {
     // error("zero/nan vector or sum in normalize, replacing with unif\n");
-    myprintf(mystderr, "zero/nan vector or sum in normalize, replacing with unif\n");
+    MYprintf(MYstderr, "zero/nan vector or sum in normalize, replacing with unif\n");
     for(i=0; i<n; i++) v[i] = 1.0/n;
     vsum = 1.0;
   }

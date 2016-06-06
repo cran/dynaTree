@@ -23,6 +23,8 @@
  ****************************************************************************/
 
 
+#include <Rmath.h>
+#include <R.h>
 extern "C" {
 #include "matrix.h"
 #include "rhelp.h"
@@ -30,8 +32,6 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <Rmath.h>
-#include <R.h>
 }
 #include "particle.h"
 
@@ -118,18 +118,18 @@ void Particle::Propagate(unsigned int index)
 
   /* calculate the probability of staying at the same tree */
   double pstay = leaf->stayProb();
-  // myprintf(stdout, "pstay=%g\n", pstay);
+  // MYprintf(stdout, "pstay=%g\n", pstay);
 
   /* calculate the probability of growing to a new tree by 
      splitting at the leaf node that pall->X[index] belongs to */
   int var; double val;
   double pgrow = leaf->growProb(&var, &val);
-  // myprintf(stdout, "pgrow=%g\n", pgrow);
+  // MYprintf(stdout, "pgrow=%g\n", pgrow);
  
   /* calculate the probability of pruning back from the
      parent of the leaf node that pall->X[index] belongs to */
   double pprune = leaf->pruneProb();
-  // myprintf(stdout, "pprune=%g\n\n", pprune);
+  // MYprintf(stdout, "pprune=%g\n\n", pprune);
 
   /* clever normalization to reduce numerical error */
   double lnorm;
@@ -215,7 +215,7 @@ void Particle::Predict(double **XX, double *yy, unsigned int nn,
 		       double *var, double *q1, double *q2,
 		       double *yypred, double *ZZ)
 {
-  /* dummy pointers memory and pointers */
+  /* dumMY pointers memory and pointers */
   double meani, sdi, dfi;
 
   for(unsigned int i=0; i<nn; i++) {
@@ -784,13 +784,13 @@ void move_avg(int nn, double* XX, double *YY, int n, double* X,
     search=1;
     while(search){
       if(u==(n-1)) search = 0;
-      else if( myfmax(fabs(XX[i]-Xo[l+1]), fabs(XX[i]-Xo[u+1])) > 
-               myfmax(fabs(XX[i]-Xo[l]), fabs(XX[i]-Xo[u]))) search = 0;
+      else if( MYfmax(fabs(XX[i]-Xo[l+1]), fabs(XX[i]-Xo[u+1])) > 
+               MYfmax(fabs(XX[i]-Xo[l]), fabs(XX[i]-Xo[u]))) search = 0;
       else{ l++; u++; }
     }
 
     /* width of the window in X-space */
-    range = myfmax(fabs(XX[i]-Xo[l]), fabs(XX[i]-Xo[u]));
+    range = MYfmax(fabs(XX[i]-Xo[l]), fabs(XX[i]-Xo[u]));
     
     /* calculate the weights in the window; 
      * every weight outside the window will be zero */

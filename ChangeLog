@@ -1,3 +1,18 @@
+1.2-9 (06 June 2016)
+-----
+
+little upgrades to get it back on CRAN, and change web page,
+and added Chris to authors
+
+
+1.2-8 (15 Dec 2014)
+-----
+
+(via linking to tgp) fixed three abs to fabs in matrix.c
+
+removed namespace std in cloud.h
+
+
 1.2-7 (16 Sept 2013)
 -----
 

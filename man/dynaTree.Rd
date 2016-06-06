@@ -271,12 +271,13 @@ dynaTrees(X, y, N = 1000,  R = 10, sub = length(y),
   \emph{Bayesian treed models.}
   Machine Learning, \bold{48}, 303--324.
 
-  \url{http://faculty.chicagobooth.edu/robert.gramacy/dynaTree.html}
+  \url{http://bobby.gramacy.com/r_packages/dynaTree/}
 
 }
 \author{
-  Robert B. Gramacy \email{rbgramacy@chicagobooth.edu} and\cr
-  Matt Taddy \email{taddy@chicagobooth.edu}
+  Robert B. Gramacy \email{rbgramacy@chicagobooth.edu}, \cr
+  Matt Taddy \email{taddy@chicagobooth.edu}, and \cr
+  Christoforos Anagnostopoulos \email{christoforos.anagnostopoulos06@imperial.ac.uk}
 }
 
 \note{

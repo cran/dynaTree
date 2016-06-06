@@ -425,9 +425,9 @@ void printRect(FILE* outfile, int d, double** rect)
   int j,i;
   for(j=0; j<2; j++) {
     for(i=0; i<d; i++) {
-      myprintf(outfile, " %5.4g", rect[j][i]);
+      MYprintf(outfile, " %5.4g", rect[j][i]);
     }
-    myprintf(outfile, "\n");
+    MYprintf(outfile, "\n");
   }
 }
 

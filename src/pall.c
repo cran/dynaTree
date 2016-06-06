@@ -203,8 +203,8 @@ void add_data(Pall *pall, double **X, unsigned int n,
     } assert(nna == 0);
 
     /* BOBBY: delete this later */
-    printIVector(pall->Xna, nnew, mystdout);
-    printIMatrix(pall->XNA, pall->nna, pall->m, mystdout);
+    printIVector(pall->Xna, nnew, MYstdout);
+    printIMatrix(pall->XNA, pall->nna, pall->m, MYstdout);
   }
 
   /*  update n */

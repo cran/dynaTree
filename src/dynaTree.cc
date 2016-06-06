@@ -23,9 +23,9 @@
  ****************************************************************************/
 
 
+#include "R.h"
 extern "C" {
 #include "rhelp.h"
-#include "R.h"
 #include "matrix.h"
 }
 #include "cloud.h"
@@ -171,7 +171,7 @@ void rejuvenate_R(/* inputs */
   int *pstart = iseq(0,nstart-1);
   
   /* print something? */
-  if(*verb_in > 0) myprintf(mystdout, "rejuvenating\n");
+  if(*verb_in > 0) MYprintf(MYstdout, "rejuvenating\n");
 
   /* allocate a new particle cloud */
   Cloud *newcloud = new Cloud(cloud->Nrevert, cloud->pall, pstart, nstart);
@@ -198,7 +198,7 @@ void rejuvenate_R(/* inputs */
   newcloud = NULL;
 
   /* print something */
-  if(*verb_in > 0) myprintf(mystdout, "now %d particles\n", cloud->N);
+  if(*verb_in > 0) MYprintf(MYstdout, "now %d particles\n", cloud->N);
 
   /* return to R */
   PutRNGstate();
@@ -1151,7 +1151,7 @@ void delete_clouds(void)
 {
   for(unsigned int i=0; i<NC; i++) {
     if(clouds[i]) {
-      myprintf(mystdout, "removing cloud %d\n", i);
+      MYprintf(MYstdout, "removing cloud %d\n", i);
       delete clouds[i];
     }
   }

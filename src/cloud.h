@@ -29,7 +29,7 @@
 #include "particle.h"
 #include "matrix.h"
 
-using namespace std;
+// using namespace std;
 
 class Cloud
 {

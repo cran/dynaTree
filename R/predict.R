@@ -768,7 +768,7 @@ qEI.dynaTree <- function(object, XX, q=0, alpha=2, verb=0)
     if(object$icept == "augmented") XX <- cbind(rep(1,nn), XX)
     if(ncol(XX) != object$m) stop("XX has bad dimensions");
 
-    ## check q and alpha
+    ## check q, alpha
     if(length(q) != 1) stop("q must be a scalar")
     if(length(alpha != 1) && alpha <= 0) stop("alpha must be a positive scalar")
     
