@@ -1,5 +1,5 @@
 # Load the shared object
-useDynLib(dynaTree)
+useDynLib(dynaTree, .registration=TRUE)
 
 # Exports
 export(alc, alc.dynaTree, alcX, alcX.dynaTree, deletecloud,

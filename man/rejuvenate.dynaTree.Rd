@@ -75,7 +75,7 @@
   \url{http://bobby.gramacy.com/r_packages/dynaTree/}
 }
 \author{
-Robert B. Gramacy \email{rbgramacy@chicagobooth.edu}, \cr
+Robert B. Gramacy \email{rbg@vt.edu}, \cr
 Matt Taddy \email{taddy@chicagobooth.edu}, and \cr
 Christoforos Anagnostopoulos \email{christoforos.anagnostopoulos06@imperial.ac.uk}
 }

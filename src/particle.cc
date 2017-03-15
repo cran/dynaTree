@@ -135,15 +135,15 @@ void Particle::Propagate(unsigned int index)
   double lnorm;
   if(R_FINITE(pprune)) {
     if(R_FINITE(pgrow)) {
-      lnorm = fmin(pstay, fmin(pprune, pgrow));
+      lnorm = fmin2(pstay, fmin2(pprune, pgrow));
       pstay -= lnorm; pgrow -=lnorm; pprune -= lnorm;
     } else {
-      lnorm = fmin(pstay, pprune);
+      lnorm = fmin2(pstay, pprune);
       pstay -= lnorm; pprune -= lnorm;
     }
   } else {
     if(R_FINITE(pgrow)) {
-      lnorm = fmin(pstay, pgrow);
+      lnorm = fmin2(pstay, pgrow);
       pstay -= lnorm; pgrow -= lnorm;
     } else {
       pstay = 0.0;

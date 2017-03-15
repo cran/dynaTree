@@ -1,8 +1,8 @@
 Package: dynaTree
 Title: Dynamic Trees for Learning and Design
-Version: 1.2-9
-Date: 2016-06-06
-Author: Robert B. Gramacy <rbgramacy@chicagobooth.edu> and Matt A. Taddy <taddy@chicagobooth.edu> and Christoforos Anagnostopoulos <christoforos.anagnostopoulos06@imperial.ac.uk>
+Version: 1.2-10
+Date: 2017-03-13
+Author: Robert B. Gramacy <rbgramacy@chicagobooth.edu>, Matt A. Taddy <taddy@chicagobooth.edu> and Christoforos Anagnostopoulos <christoforos.anagnostopoulos06@imperial.ac.uk>
 Depends: R (>= 2.14.0), methods
 Suggests: akima, tgp, plgp, MASS
 Description: Inference by sequential Monte Carlo for 
@@ -12,12 +12,10 @@ Description: Inference by sequential Monte Carlo for
   sensitivity analysis of inputs.  Illustrative 
   examples from the original dynamic trees paper are facilitated
   by demos in the package; see demo(package="dynaTree").
-Maintainer: Robert B. Gramacy  <rbgramacy@chicagobooth.edu>
+Maintainer: Robert B. Gramacy  <rbg@vt.edu>
 License: LGPL
 URL: http://bobby.gramacy.com/r_packages/dynaTree/
 NeedsCompilation: yes
-Packaged: 2016-06-06 18:53:31 UTC; bobby
-X-CRAN-Comment: Archived on 2016-05-02 as check problems were not
-        corrected despite reminders.
+Packaged: 2017-03-15 02:15:22 UTC; bobby
 Repository: CRAN
-Date/Publication: 2016-06-06 23:33:04
+Date/Publication: 2017-03-15 14:54:54
