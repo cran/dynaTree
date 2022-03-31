@@ -904,7 +904,7 @@ void Cloud::ALC(double **XX, unsigned int nn, double **rect,
   if(approx) area = (double) (pall->n + pall->g); 
   else {
     for(unsigned int j=0; j<pall->bmax; j++) {
-      if(cat[j] || rect[1][j] - rect[0][j] < DOUBLE_EPS) continue;
+      if(cat[j] || rect[1][j] - rect[0][j] < DBL_EPSILON) continue;
       area *= rect[1][j] - rect[0][j];
     }
   }
@@ -943,7 +943,7 @@ void Cloud::ALC(double **rect, int *cat, bool approx, double *alc_out,
   if(approx) area = (double) (pall->n + pall->g);
   else {
     for(unsigned int j=0; j<pall->bmax; j++) {
-      if(cat[j] || rect[1][j] - rect[0][j] < DOUBLE_EPS) continue;
+      if(cat[j] || rect[1][j] - rect[0][j] < DBL_EPSILON) continue;
       area *= rect[1][j] - rect[0][j];
     } 
   }
@@ -979,8 +979,8 @@ void Cloud::Relevance(double **rect, int *cat, bool approx, double **delta,
     if(approx) area = (double) (pall->n + pall->g);
     else {
       for(unsigned int j=0; j<pall->bmax; j++) {
-	if(cat[j] || rect[1][j] - rect[0][j] < DOUBLE_EPS) continue;
-	area *= rect[1][j] - rect[0][j];
+	      if(cat[j] || rect[1][j] - rect[0][j] < DBL_EPSILON) continue;
+	      area *= rect[1][j] - rect[0][j];
       }
     }
 

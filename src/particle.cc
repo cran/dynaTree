@@ -527,7 +527,7 @@ void Particle::ALC(double **XX, unsigned int nn, double **Xref,
 {
   double ealc;
   for(unsigned int j=0; j<nref; j++) {
-    if(probs && probs[j] <= DOUBLE_EPS) continue;
+    if(probs && probs[j] <= DBL_EPSILON) continue;
     for(unsigned int i=0; i<nn; i++) {
       ealc = tree->ALC(XX[i], Xref[j]);
       if(probs) alc[i][j] += probs[j] * ealc;
@@ -562,7 +562,7 @@ void Particle::EImECI(double **XX, unsigned int nn, double **Xref,
   /* then calculate EI and ECIs */
   double eci; 
   for(unsigned int j=0; j<nref; j++) {
-    if(probs && probs[j] <= DOUBLE_EPS) continue;
+    if(probs && probs[j] <= DBL_EPSILON) continue;
     double ei = EI(mean[j], sd[j], df[j], fmin);
     for(unsigned int i=0; i<nn; i++) {
       eci = tree->ECI(XX[i], Xref[j], mean[j], sd[j], fmin, ei);

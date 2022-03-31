@@ -118,12 +118,11 @@ for dynamic tree models
   Journal of the American Statistical Association, 106(493), pp. 109-123;
   arXiv:0912.1586
   
-  \url{http://bobby.gramacy.com/r_packages/dynaTree/}
+  \url{https://bobby.gramacy.com/r_packages/dynaTree/}
 }
 \author{
 Robert B. Gramacy \email{rbg@vt.edu}, \cr
-Matt Taddy \email{taddy@chicagobooth.edu}, and
-Christoforos Anagnostopoulos \email{christoforos.anagnostopoulos06@imperial.ac.uk}}
+Matt Taddy and Christoforos Anagnostopoulos}
 
 \seealso{
 \code{\link{dynaTree}}, \code{\link{update.dynaTree}},

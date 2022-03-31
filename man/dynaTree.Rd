@@ -12,7 +12,7 @@ Monte Carlo (SMC) method of particle learning (PL)
 \usage{
 dynaTree(X, y, N = 1000, model = c("constant", "linear", "class", "prior"),
          nu0s20 = c(0,0), ab = c(0.95, 2), minp = NULL, sb = NULL, 
-	 nstart = minp, icept = c("implicit", "augmented", "none"), 
+	       nstart = minp, icept = c("implicit", "augmented", "none"), 
          rprop = c("luvar", "luall", "reject"), verb = round(length(y)/10))
 dynaTrees(X, y, N = 1000,  R = 10, sub = length(y),
           model = c("constant", "linear", "class", "prior"), nu0s20 = c(0,0),
@@ -20,7 +20,7 @@ dynaTrees(X, y, N = 1000,  R = 10, sub = length(y),
           icept =  c("implicit", "augmented", "none"),
           rprop = c("luvar", "luall", "reject"), XX = NULL, yy = NULL,
 	  varstats = FALSE, lhs = NULL, plotit = FALSE, proj = 1,
-          rorder = TRUE, verb = round(sub/10),  pverb=round(N/10), ...)
+          rorder = TRUE, verb = round(sub/10), pverb=round(N/10), ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -160,7 +160,7 @@ dynaTrees(X, y, N = 1000,  R = 10, sub = length(y),
 \item{pverb}{
    a positive scalar integer indicating after many particles
    should be processed for prediction before a progress statement is
-   printed to the console; a value of \code{verb = 0} is quiet
+   printed to the console; a value of \code{pverb = 0} is quiet
  }
   \item{\dots}{
     extra arguments to \code{\link{predict.dynaTree}} passed
@@ -271,13 +271,12 @@ dynaTrees(X, y, N = 1000,  R = 10, sub = length(y),
   \emph{Bayesian treed models.}
   Machine Learning, \bold{48}, 303--324.
 
-  \url{http://bobby.gramacy.com/r_packages/dynaTree/}
+  \url{https://bobby.gramacy.com/r_packages/dynaTree/}
 
 }
 \author{
   Robert B. Gramacy \email{rbg@vt.edu}, \cr
-  Matt Taddy \email{taddy@chicagobooth.edu}, and \cr
-  Christoforos Anagnostopoulos \email{christoforos.anagnostopoulos06@imperial.ac.uk}
+  Matt Taddy and Christoforos Anagnostopoulos 
 }
 
 \note{

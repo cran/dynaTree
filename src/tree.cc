@@ -1960,7 +1960,7 @@ void Tree::CalcConst(void)
   for(unsigned int i=0; i<n; i++) syy += sq(pall->y[p[i]]);
   
   /* check for degenerate but non-zero syy due to numerical imprecision */
-  if(syy < DOUBLE_EPS) syy = 0.0;
+  if(syy < DBL_EPSILON) syy = 0.0;
 }
 
 
@@ -2681,7 +2681,7 @@ double Tree::AvgEntropy(double **rect, int *cat, bool approx)
     for(unsigned int j=0; j<pall->bmax; j++) {
       bjmaj = rect[1][j] - rect[0][j];
       /* for the intercept or degenerate rectangle */
-      if(cat[j] || bjmaj <= DOUBLE_EPS) continue;
+      if(cat[j] || bjmaj <= DBL_EPSILON) continue;
       area *= bjmaj;
     }
   }
@@ -2874,13 +2874,13 @@ double intdot2(unsigned int m, double c, double *x, double *a, double *b,
   if(approx) {
     area = approx;
     if(x) for(i=0; i<m; i++) 
-	    if(!cat[i] && b[i] - a[i] <= DOUBLE_EPS) c += b[i]*x[i];
+	    if(!cat[i] && b[i] - a[i] <= DBL_EPSILON) c += b[i]*x[i];
   } else {
     area = 1.0;
     for(i=0; i<m; i++) {
       bimai = b[i] - a[i];      
       if(cat[i]) area *= bimai;  /* next: for icept or degenerate rectangle */
-      else if(x && bimai <= DOUBLE_EPS) c += b[i]*x[i];
+      else if(x && bimai <= DBL_EPSILON) c += b[i]*x[i];
       else area *= bimai;
     }
   }
@@ -2899,7 +2899,7 @@ double intdot2(unsigned int m, double c, double *x, double *a, double *b,
 
       /* pinv <- prod(b[-i] - a[-i]) */
       pinv = bimai = b[i] - a[i];
-      if(cat[i] || pinv <= DOUBLE_EPS) continue;
+      if(cat[i] || pinv <= DBL_EPSILON) continue;
 
       /* gral <- gral + c*sum(x^2 * y)|_a^b */
       bi2 = b[i]*b[i]; ai2 = a[i]*a[i]; bi2mai2 = bi2 - ai2;
@@ -2914,7 +2914,7 @@ double intdot2(unsigned int m, double c, double *x, double *a, double *b,
 	
 	/* pinv <- prod(b[-c(i,j)] - a[-c(i,j)]) */
 	pinv = bimai*(b[j] - a[j]);
-	if(pinv <= DOUBLE_EPS) continue;
+	if(pinv <= DBL_EPSILON) continue;
 
 	/* gral <- gral + p*x[i]*x[j]*(b[i]^2-a[i]^2)*(b[j]^2-a[j]^2)/2 */
 	gral += x[i]*x[j]*bi2mai2*(b[j]*b[j]-a[j]*a[j])/(pinv*2.0);
@@ -2952,7 +2952,7 @@ double intdot(unsigned int m, double c, double **g, double *a,
     for(i=0; i<m; i++) {
       bimai = b[i] - a[i];
       /* if not intercept or degenerate rectangle */
-      if(cat[i] || bimai > DOUBLE_EPS) area *= bimai;
+      if(cat[i] || bimai > DBL_EPSILON) area *= bimai;
     }
   }
   assert(area > 0);
@@ -2968,33 +2968,33 @@ double intdot(unsigned int m, double c, double **g, double *a,
       /* pinv <- prod(b[-i] - a[-i]), dealing with a possible
          intercept */
       bimai = b[i] - a[i];
-      if(cat[i] || bimai <= DOUBLE_EPS) {
-	gral += g[i][i]*bi2;
-	bi2mai2 = 2.0*b[i];
-	bimai = 1.0;
+      if(cat[i] || bimai <= DBL_EPSILON) {
+	      gral += g[i][i]*bi2;
+	      bi2mai2 = 2.0*b[i];
+	      bimai = 1.0;
       } else { /* standard calculation */
 
-	/* save for later */
-	ai2 = a[i]*a[i]; 
-	bi2mai2 = bi2 - ai2;
+	      /* save for later */
+	      ai2 = a[i]*a[i]; 
+	      bi2mai2 = bi2 - ai2;
 
-	/* gral <- gral + p*(x[i]^2)*(b[i]^3 - a[i]^3)/3 */
-	gral += g[i][i]*(b[i]*bi2-a[i]*ai2)/(bimai*3.0);
+	      /* gral <- gral + p*(x[i]^2)*(b[i]^3 - a[i]^3)/3 */
+	      gral += g[i][i]*(b[i]*bi2-a[i]*ai2)/(bimai*3.0);
       }
       
       /* inner loop */
       for(j=0; j<i; j++) {
 	
-	/* pinv <- prod(b[-c(i,j)] - a[-c(i,j)]), dealing with
-	   a possible intercept */
-	bjmaj = b[j] - a[j];
-	if(cat[j] || bjmaj <= DOUBLE_EPS) {
-	  bjmaj = 1.0;
-	  bj2maj2 = 2*b[j];
-	} else bj2maj2 = b[j]*b[j] - a[i]*a[j];
+	      /* pinv <- prod(b[-c(i,j)] - a[-c(i,j)]), dealing with
+	        a possible intercept */
+	      bjmaj = b[j] - a[j];
+	      if(cat[j] || bjmaj <= DBL_EPSILON) {
+	        bjmaj = 1.0;
+	        bj2maj2 = 2*b[j];
+	      } else bj2maj2 = b[j]*b[j] - a[i]*a[j];
 
-	/* gral <- gral + p*x[i]*x[j]*(b[i]^2-a[i]^2)*(b[j]^2-a[j]^2)/2 */
-	gral += g[i][j]*(bi2mai2)*(bj2maj2)/(bimai*bjmaj*2.0);
+	      /* gral <- gral + p*x[i]*x[j]*(b[i]^2-a[i]^2)*(b[j]^2-a[j]^2)/2 */
+	      gral += g[i][j]*(bi2mai2)*(bj2maj2)/(bimai*bjmaj*2.0);
       }
       
     }
