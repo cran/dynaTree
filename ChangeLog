@@ -1,3 +1,9 @@
+1.2-12 (01 Apr 2022)
+------
+
+fixed clang and BLAS issues from Brian
+
+
 1.2-11 (29 March 2022)
 ------
 

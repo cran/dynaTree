@@ -1,7 +1,7 @@
 Package: dynaTree
 Title: Dynamic Trees for Learning and Design
-Version: 1.2-11
-Date: 2022-03-29
+Version: 1.2-12
+Date: 2022-04-01
 Author: Robert B. Gramacy <rbg@vt.edu>, Matt A. Taddy and Christoforos Anagnostopoulos
 Depends: R (>= 2.14.0), methods
 Suggests: akima, tgp, plgp, MASS
@@ -17,6 +17,6 @@ Maintainer: Robert B. Gramacy  <rbg@vt.edu>
 License: LGPL
 URL: https://bobby.gramacy.com/r_packages/dynaTree/
 NeedsCompilation: yes
-Packaged: 2022-03-31 12:21:51 UTC; bobby
+Packaged: 2022-04-01 14:25:20 UTC; bobby
 Repository: CRAN
-Date/Publication: 2022-03-31 22:50:02 UTC
+Date/Publication: 2022-04-01 23:40:09 UTC

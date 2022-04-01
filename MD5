@@ -1,5 +1,5 @@
-be6715cbc2cad6aa3a0b77172932bdd2 *ChangeLog
-ba46dfddd2b5e3e70bb0d03ac325ce60 *DESCRIPTION
+cf1818c23fc1d793d679cb874668ff78 *ChangeLog
+e8c33ee0fae9679ea8365d91e8b0331c *DESCRIPTION
 a394642b1ec43d154db2e7663fdef8d8 *NAMESPACE
 564c705aaeb2363d5db08710c0aa12df *R/000.R
 e33713450ebeaccbab702277f6e7af45 *R/dynaTree.R
@@ -36,8 +36,8 @@ c1535c68cf2948ca7236e3b706680137 *src/cloud.cc
 f4ecea88adc3459493710ed08cc0c725 *src/init.c
 60d5b910d66d03fc6b51fe7d3f32bb9d *src/lh.c
 aa3494e9a59888f83baf2bb941a071f7 *src/lh.h
-f42a23825e83c9bb1bf61cbc054d070a *src/linalg.c
-c9cce2c24568995b9a9a6cdd5a723a1e *src/linalg.h
+e90480ffa1bad9428d4c296e9e21b776 *src/linalg.c
+34bb5ea52a0789339e46df5bf45badce *src/linalg.h
 d2dec33f02d84e520ab19ea647ea7642 *src/matrix.c
 82a72086e29c44601a675e129bea5401 *src/matrix.h
 326b667c614ad8d93574eda3b785f7c2 *src/pall.c
@@ -45,6 +45,6 @@ d2dec33f02d84e520ab19ea647ea7642 *src/matrix.c
 3c78a5eb124d4e2655fa1083a242a145 *src/particle.cc
 eda044ac4b8bfa230c574686bc6e9b7e *src/particle.h
 566af35ef5275604911cef5092623510 *src/rhelp.c
-a084dcd54cc693c3decee62270a814a2 *src/rhelp.h
+8417ae8052320832155d48ffadd84a33 *src/rhelp.h
 70013b033673187a51397fbb714731db *src/tree.cc
 08f82cf2f1a46710c0d76a5960876cb1 *src/tree.h
