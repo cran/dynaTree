@@ -1,6 +1,12 @@
 1.2-12 (01 Apr 2022)
 ------
 
+replaced akima with interp and now require suggests
+
+
+1.2-12 (01 Apr 2022)
+------
+
 fixed clang and BLAS issues from Brian
 
 

@@ -335,21 +335,22 @@ deleteclouds()
 ## for more examples of dynaTree see update.dynaTree
 
 ## Motorcycle accident data
-library(MASS)
-data(mcycle)
-Xm <- mcycle[,1]
-Ym <- mcycle[,2]
-XXm <- seq(min(mcycle[,1]), max(mcycle[,1]), length=100)
-
-R <- 2 ## use R >= 10 for better results
-## small R is for faster CRAN checks
-## fit constant model with R=2 repeats and predictions
-moto.fit <- dynaTrees(Xm, Ym, XX=XXm, R=R, plotit=TRUE)
-
-## plot the averages
-plot(moto.fit, ptype="mean")
-
-## clouds automatically deleted by dynaTrees
+if(require("MASS")) {
+  data(mcycle)
+  Xm <- mcycle[,1]
+  Ym <- mcycle[,2]
+  XXm <- seq(min(mcycle[,1]), max(mcycle[,1]), length=100)
+  
+  R <- 2 ## use R >= 10 for better results
+  ## small R is for faster CRAN checks
+  ## fit constant model with R=2 repeats and predictions
+  moto.fit <- dynaTrees(Xm, Ym, XX=XXm, R=R, plotit=TRUE)
+  
+  ## plot the averages
+  plot(moto.fit, ptype="mean")
+  
+  ## clouds automatically deleted by dynaTrees
+}
 
 \dontrun{
 ## 2-d/3-class classification data
