@@ -12,7 +12,7 @@ extern void classprobs_R(void *, void *, void *, void *, void *, void *, void *)
 extern void coef_R(void *, void *, void *, void *, void *);
 extern void copy_cloud_R(void *, void *);
 extern void delete_cloud_R(void *);
-extern void delete_clouds_R();
+extern void delete_clouds_R(void);
 extern void dynaTree_R(void *, void *, void *, void *, void *, void *, void *, void *, void *, void *, void *, void *, void *, void *);
 extern void entropyX_R(void *, void *, void *);
 extern void ieci_R(void *, void *, void *, void *, void *, void *, void *, void *);

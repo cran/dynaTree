@@ -1,4 +1,10 @@
-1.2-12 (01 Apr 2022)
+1.2-14 (19 Oct 2022)
+------
+
+dealt with clang-15 warnings
+
+
+1.2-13 (10 Jun 2022)
 ------
 
 replaced akima with interp and now require suggests

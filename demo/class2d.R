@@ -7,7 +7,7 @@
 library(dynaTree)
 library(plgp)
 library(tgp)
-library(akima)
+library(interp)
 
 ## close down old graphics windows
 graphics.off()

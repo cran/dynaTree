@@ -262,12 +262,12 @@ dynaTrees(X, y, N = 1000,  R = 10, sub = length(y),
   Discussion Paper 2008-32, Duke University Dept. of Statistical
   Science.
 
-  Chipman, H., George, E., \& McCulloch, R. (1998).
+  Chipman, H., George, E., & McCulloch, R. (1998).
   \emph{Bayesian CART model search (with discussion).}
   Journal of the American Statistical Association, \bold{93},
   935--960.
 
-  Chipman, H., George, E., \& McCulloch, R. (2002).
+  Chipman, H., George, E., & McCulloch, R. (2002).
   \emph{Bayesian treed models.}
   Machine Learning, \bold{48}, 303--324.
 
@@ -367,7 +367,7 @@ class.fit <- dynaTrees(X, C, XX=XX, model="class")
 ## for plot the output (no generic plotting available)
 cols <- c(gray(0.85), gray(0.625), gray(0.4))
 par(mfrow=c(1,2))
-library(akima)
+library(interp)
 
 ## plot R-averaged predicted class
 mclass <- apply(class.fit$p, 1, which.max)

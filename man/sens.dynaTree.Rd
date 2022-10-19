@@ -137,7 +137,7 @@
   uncertainty distribution, we can also estimate the main effects
   through simple non-parametric regression (a moving average).
 
-  See the Gramacy, Taddy, \& Wild (2011) reference below for more details.
+  See the Gramacy, Taddy, & Wild (2011) reference below for more details.
   
   If \code{method = "boot"} is used then simply replace LHS above
   with a bootstrap resample of the \code{object$X} locations.

@@ -54,7 +54,7 @@ relevance.dynaTree(object, rect = NULL, categ = NULL,
   Those with the largest relevances are the most useful for prediction.
   A sensible variable selection rule based on these relevances is to
   discard those variables whose median relevance is not positive.  See
-  the Gramacy, Taddy, \& Wild (2011) reference below for more details.
+  the Gramacy, Taddy, & Wild (2011) reference below for more details.
   
   The new set of particles is appended to the old set.  However
   after a subsequent \code{\link{update.dynaTree}} call the total
