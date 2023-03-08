@@ -245,7 +245,7 @@ update.dynaTree <- function(object, X, y, verb=round(length(y)/10), ...)
 ## i.e., removing them from the marginal likelihood calculation
 
 setGeneric("retire",
-            function(object, ...)
+            function(object, indices, lambda=1, verb=0)
             standardGeneric("retire")
             )
 
@@ -360,7 +360,8 @@ setMethod("copy", "dynaTree", copy.dynaTree)
 ## one
 
 setGeneric("rejuvenate",
-            function(object, ...)
+            function(object, odr=order(runif(length(object$y))),
+                                verb=round(length(object$y)/10))
             standardGeneric("rejuvenate")
             )
 

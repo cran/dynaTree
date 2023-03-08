@@ -329,7 +329,8 @@ setMethod("ieci", "dynaTree", ieci.dynaTree)
 ## cloud which must not have been deleted
 
 setGeneric("alc",
-            function(object, ...)
+            function(object, XX, rect=NULL, categ=NULL, approx=FALSE,
+                         Xref=NULL, probs=NULL, verb=0)
             standardGeneric("alc")
             )
 
@@ -468,7 +469,7 @@ setMethod("alc", "dynaTree", alc.dynaTree)
 ## must not have been deleted
 
 setGeneric("alcX",
-            function(object, ...)
+            function(object, rect=NULL, categ=NULL, approx=FALSE, verb=0)
             standardGeneric("alcX")
             )
 
@@ -565,7 +566,7 @@ setMethod("alcX", "dynaTree", alcX.dynaTree)
 ## must not have been deleted
 
 setGeneric("relevance",
-            function(object, ...)
+            function(object, rect=NULL, categ=NULL, approx=FALSE, verb=0)
             standardGeneric("relevance")
             )
 
@@ -694,7 +695,7 @@ setMethod("entropyX", "dynaTree", entropyX.dynaTree)
 ## C-side cloud which must not have been deleted
 
 setGeneric("qEntropy",
-            function(object, ...)
+            function(object, XX, q=0, verb=0)
             standardGeneric("qEntropy")
             )
 
@@ -750,7 +751,7 @@ setMethod("qEntropy", "dynaTree", qEntropy.dynaTree)
 ## C-side cloud which must not have been deleted
 
 setGeneric("qEI",
-            function(object, ...)
+            function(object, XX, q=0, alpha=2, verb=0)
             standardGeneric("qEI")
             )
 
@@ -810,7 +811,9 @@ setMethod("qEI", "dynaTree", qEI.dynaTree)
 ## was copied from the tgp package
 
 setGeneric("sens",
-            function(object, ...)
+            function(object, class=NULL, nns=1000, nME=100, span=0.3,
+                          method=c("lhs", "boot"), lhs=NULL, categ=NULL,
+                          verb=0)
             standardGeneric("sens")
             )
 
