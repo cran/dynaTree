@@ -1,5 +1,5 @@
-ea4b9cbfaa7be184b24ff49477b3fccd *ChangeLog
-032e3f64b7e4017af07709d7bef123e9 *DESCRIPTION
+f27ae4be7b40df152a304991223f1dd9 *ChangeLog
+47aab695d8dea678c5556d4f696a2ca4 *DESCRIPTION
 a394642b1ec43d154db2e7663fdef8d8 *NAMESPACE
 564c705aaeb2363d5db08710c0aa12df *R/000.R
 d2385ecb971e368af76a02d97b26d07c *R/dynaTree.R
@@ -30,7 +30,7 @@ ad5c08691701da3e8f05ba512e6436b8 *man/predict.dynaTree.Rd
 a72ad86f172329724169001e19f61966 *man/update.dynaTree.Rd
 bd19104c5c5aa09426e79ca4c9f82807 *man/varpropuse.Rd
 6d89eb6a04a473c25bb3e80cf0ab147a *src/Makevars
-c1535c68cf2948ca7236e3b706680137 *src/cloud.cc
+d17923a6d2739a4522932d4727052a95 *src/cloud.cc
 5b43586ff8764ebd5b583f94c572b351 *src/cloud.h
 71b59c2b702da35bdd08f64e6d96025d *src/dynaTree.cc
 39cd5ef78f090c31cf404c55e3dc9878 *src/init.c
@@ -46,5 +46,5 @@ d2dec33f02d84e520ab19ea647ea7642 *src/matrix.c
 eda044ac4b8bfa230c574686bc6e9b7e *src/particle.h
 566af35ef5275604911cef5092623510 *src/rhelp.c
 dae29d1025761366517b56cb7db0e08f *src/rhelp.h
-70013b033673187a51397fbb714731db *src/tree.cc
+9fe4d6fd0286b3ee7c8088a65b5367ff *src/tree.cc
 08f82cf2f1a46710c0d76a5960876cb1 *src/tree.h

@@ -1281,8 +1281,13 @@ Tree* Tree::RetireDatum(unsigned int index, double lambda)
     
     /* remove p[index] */
     n--;
-    p[pi] = p[n];
-    p = (int*) realloc(p, sizeof(int) * n);
+    if(n > 0) {
+      p[pi] = p[n];
+      p = (int*) realloc(p, sizeof(int) * n);
+    } else {
+      free(p);
+      p = NULL;
+    }
     /* indices get adjusted later, after Linear updates */
 
     /* maybe remove al[index] */
@@ -1299,7 +1304,8 @@ Tree* Tree::RetireDatum(unsigned int index, double lambda)
     if(pall->model == CLASS) { 
       counts[(int) y]--; /* take from likelihood */
       if(ng == 1.0) { /* special initalization case */
-	assert(!gcounts); gcounts = new_zero_vector(pall->nc); 
+	     assert(!gcounts); 
+       gcounts = new_zero_vector(pall->nc); 
       }
       scalev(gcounts, pall->nc, lambda);
       gcounts[(int) y] += 1.0; /* add to prior */
@@ -1307,43 +1313,45 @@ Tree* Tree::RetireDatum(unsigned int index, double lambda)
 
       /* update the constant model sufficient statistics */
       if(pall->icept) { /* implicit intercept */
-	assert(pall->model != LINEAR); 	/* can't do linear in this case */
+	     assert(pall->model != LINEAR); 	/* can't do linear in this case */
 
-	/* remove from likelihood */
-	if(n == 0) { sy = syy = 0.0; }
-	else { syy -= sq(y); sy -= y; }
+	     /* remove from likelihood */
+	     if(n == 0) { sy = syy = 0.0; }
+	     else { syy -= sq(y); sy -= y; }
 
-	/* add to prior */
-	syg = lambda*syg + y; 
-	syyg = lambda*syyg + sq(y);
+	     /* add to prior */
+	     syg = lambda*syg + y; 
+	     syyg = lambda*syyg + sq(y);
 
       } else { /* explicit intercept */
-	assert(pall->model == LINEAR);
-	if(n == 0) syy = 0; 
-	else syy -= sq(y);
-	syyg = lambda*syyg + sq(y);
+	     assert(pall->model == LINEAR);
+	     if(n == 0) syy = 0; 
+	     else syy -= sq(y);
+	     syyg = lambda*syyg + sq(y);
       }
 
       /* update linear part of model */
       if(pall->model == LINEAR) {
-	unsigned int m = pall->bmax;
+	     unsigned int m = pall->bmax;
 
-	/* special initialization case */
-	if(ng == 1.0) {
-	  assert(!XtXg); XtXg = new_zero_matrix(m, m);
-	  assert(!Xtyg); Xtyg = new_zero_vector(m);
-	}
+	     /* special initialization case */
+	     if(ng == 1.0) {
+	       assert(!XtXg); 
+          XtXg = new_zero_matrix(m, m);
+	       assert(!Xtyg); 
+          Xtyg = new_zero_vector(m);
+	     }
 
-	/* accumulate retire by adding to prior */
-	double **X = &(pall->X[index]);
-	linalg_dgemm(CblasNoTrans,CblasTrans,m,m,1,1.0,
+	     /* accumulate retire by adding to prior */
+	     double **X = &(pall->X[index]);
+	     linalg_dgemm(CblasNoTrans,CblasTrans,m,m,1,1.0,
 		     X,m,X,m,lambda,XtXg,m);
-	linalg_dgemv(CblasNoTrans,m,1,1.0,X,m,&y,1,lambda,Xtyg,1);
+	     linalg_dgemv(CblasNoTrans,m,1,1.0,X,m,&y,1,lambda,Xtyg,1);
 
-	/* only re-calculate the sufficient information if forgetting.  
-	   Otherwise ::grow, which will call ::Calc, is sufficient. Because
-	   when lambda = 1, bb and ldet_XtXi (for example) don't change */
-	if(lambda < 1) ReCalcLinear();
+	     /* only re-calculate the sufficient information if forgetting.  
+	       Otherwise ::grow, which will call ::Calc, is sufficient. Because
+	       when lambda = 1, bb and ldet_XtXi (for example) don't change */
+	     if(lambda < 1) ReCalcLinear();
       }
     }
 

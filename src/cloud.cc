@@ -110,6 +110,10 @@ void Cloud::Combine(Cloud *c2)
 
   /* update N */
   this->N += c2->N;
+
+  /* clean up (new code here) */
+  c2->N = 0;
+  delete c2;
 }
 
 
