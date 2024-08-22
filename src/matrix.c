@@ -23,7 +23,7 @@
 
 
 #include "rhelp.h"
-
+#include <R_ext/Error.h> 
 #include "matrix.h"
 #include <assert.h>
 #include <math.h>

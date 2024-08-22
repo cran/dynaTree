@@ -25,14 +25,16 @@
 
 #include <Rmath.h>
 #include <R.h>
+#include <R_ext/Error.h>
 extern "C" {
 #include "rhelp.h"
-// #include "R.h"
-#include "assert.h"
 #include "linalg.h"
-#include <stdlib.h>
-#include <math.h>
 }
+#include <cassert>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
 #include "cloud.h"
 
 

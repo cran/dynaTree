@@ -104,7 +104,7 @@ for dynamic tree models
   \item{entropy }{ a \code{nrow(XX)} vector of predictive entropys
     at the predictive data locations};
 
-  For \code{coef} a new \R{XXc} field is created so as not to trample
+  For \code{coef} a new \code{XXc} field is created so as not to trample
   on \code{XX}s that may have been used in a previous \code{predict},
   plus
 

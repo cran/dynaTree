@@ -23,11 +23,16 @@
  ****************************************************************************/
 
 
-#include "R.h"
+#include <R.h>
+#include <R_ext/Error.h>
 extern "C" {
 #include "rhelp.h"
 #include "matrix.h"
 }
+#include <cstdio>
+#include <fstream>
+#include <cstdlib>
+#include <cassert>
 #include "cloud.h"
 #include "assert.h"
 
@@ -154,7 +159,7 @@ void rejuvenate_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
 
   /* sanity check */
@@ -232,7 +237,7 @@ void update_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
   assert((int) m == *m_in);
@@ -298,7 +303,7 @@ void retire_R(/* inputs */
 {
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
 
   /* remove from pall and each cloud; causes changes in
@@ -327,7 +332,7 @@ void intervals_R(/* inputs */
 {
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
 
   cloud->Intervals((*index_in)-1, (*var_in)-1, a_out, b_out);
@@ -351,7 +356,7 @@ void treestats_R(/* inputs */
 {
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
 
   cloud->TreeStats(height_out, leaves_out, avgsize_out, avgretire_out);
@@ -377,7 +382,7 @@ void sameleaf_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
 
@@ -428,7 +433,7 @@ void predict_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
 
@@ -477,12 +482,12 @@ void coef_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
 
   /* check for linear */
-  if(cloud->pall->model != LINEAR) error("coef only valid for linear models");
+  if(cloud->pall->model != LINEAR) Rf_error("coef only valid for linear models");
 
   /* verbosity argument */
   unsigned int verb = *verb_in;
@@ -531,7 +536,7 @@ void alc_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
 
@@ -598,7 +603,7 @@ void ieci_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
 
@@ -652,7 +657,7 @@ void alcX_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
 
@@ -695,7 +700,7 @@ void relevance_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
 
@@ -734,7 +739,7 @@ void entropyX_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
 
   /* verbosity argument */
@@ -769,7 +774,7 @@ void qEntropy_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
 
@@ -811,7 +816,7 @@ void qEI_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
 
@@ -857,7 +862,7 @@ void predclass_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
   unsigned int nc = cloud->pall->nc;
@@ -907,7 +912,7 @@ void classprobs_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
   unsigned int cl = *class_in;
@@ -974,7 +979,7 @@ void sens_R(/* inputs */
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
   unsigned int m = cloud->pall->m;
   unsigned int aug = (unsigned) *aug_in;
@@ -1031,7 +1036,7 @@ void varpropuse_R(int *c_in, double* props_out)
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
 
   /* call the varcount function for clounds */
@@ -1051,7 +1056,7 @@ void varproptotal_R(int *c_in, double* props_out)
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
 
   /* call the varcount function for clounds */
@@ -1071,7 +1076,7 @@ void copy_cloud_R(int *c_in, int *c_out)
   /* get the cloud */
   unsigned int c = *c_in;
   if(clouds == NULL || clouds[c] == NULL) 
-    error("cloud %d is not allocated\n", c);
+    Rf_error("cloud %d is not allocated\n", c);
   Cloud *cloud = clouds[c];
 
   /* get a new cloud index */
@@ -1124,7 +1129,7 @@ void delete_cloud(unsigned int i)
   if(clouds == NULL || clouds[i] != NULL) { 
     delete clouds[i];
     clouds[i] = NULL;
-  } else error("cloud %d is not allocated\n", i);
+  } else Rf_error("cloud %d is not allocated\n", i);
 }
 
 

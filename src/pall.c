@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "pall.h"
+#include <R_ext/Error.h>
 #include "rhelp.h"
 #include "Rmath.h"
 #include "matrix.h"
@@ -70,7 +71,7 @@ Pall *new_pall(double **X, unsigned int n, unsigned int m,
   case 1: pall->rprop = LUALL; break;
   case 2: pall->rprop = LUVAR; break;
   case 3: pall->rprop = REJECT; break;
-  default: error("rprop %d not defined\n", (int) params[8]);
+  default: Rf_error("rprop %d not defined\n", (int) params[8]);
   }
   pall->icept = (unsigned int) params[7];
   pall->nc = 0;

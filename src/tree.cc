@@ -23,6 +23,7 @@
  ****************************************************************************/
 
 
+#include <R_ext/Error.h>
 extern "C" 
 {
 #include "matrix.h"
@@ -31,14 +32,16 @@ extern "C"
 #include "pall.h"
 }
 
-#include <iomanip>
+// #include <iomanip>
 #include "tree.h"
 #include "particle.h"
-#include <stdlib.h>
-#include <assert.h>
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <cassert>
 #include <Rmath.h>
 #include <R.h>
-#include <math.h>
+#include <cmath>
 
 // #define DEBUG
 
@@ -460,7 +463,7 @@ int Tree::leavesN(void)
   int numLeaves = 0;
   numLeaves = leaves(&first, &last);
   assert(numLeaves > 0);
-  if(numLeaves <= 0) MYprintf(MYstdout, "numleaves <= 0\n"); 
+  if(numLeaves <= 0) MYprintf(MYstderr, "numleaves <= 0\n"); 
   int N = 0;
   while(first) {
     N += first->n;
@@ -483,7 +486,7 @@ void Tree::grow(int var, double val)
   assert(isLeaf());
 #endif
 
-  if(!R_FINITE(val)) MYprintf(MYstdout, "inf val in grow\n");
+  if(!R_FINITE(val)) MYprintf(MYstderr, "inf val in grow\n");
     
   /* assign the split */
   assert(var >= (int) particle->pall->smin);
@@ -493,7 +496,7 @@ void Tree::grow(int var, double val)
   /* grow the children; stop if partition too small */
   bool success = grow_children(false);
   assert(success); 
-  if(!success) MYprintf(MYstdout, "grow_children failed\n");
+  if(!success) MYprintf(MYstderr, "grow_children failed\n");
   success = TRUE; /* for NDEBUG */
   assert(leftChild->n + rightChild->n == n);
 
@@ -1377,7 +1380,7 @@ Tree* Tree::RetireDatum(unsigned int index, double lambda)
 
 void Tree::Collapse(void)
 {
-  MYprintf(MYstdout, "collapsing: lost retired information in leaf\n");
+  MYprintf(MYstderr, "collapsing: lost retired information in leaf\n");
   /* sanity check */
   assert(isLeaf());
 

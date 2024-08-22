@@ -1,8 +1,17 @@
 Package: dynaTree
 Title: Dynamic Trees for Learning and Design
-Version: 1.2-16
-Date: 2023-08-22
-Author: Robert B. Gramacy <rbg@vt.edu>, Matt A. Taddy and Christoforos Anagnostopoulos
+Version: 1.2-17
+Date: 2024-08-21
+Authors@R: c(person(given = c("Robert", "B."),
+                    family = "Gramacy",
+                    role = c("aut", "cre"),
+                    email = "rbg@vt.edu"),
+             person(given = c("Matt", "A."),
+                    family = "Taddy",
+                    role = "aut"),
+             person(given = "Christoforos",
+                    family = "Anagnostopoulos",
+                    role = "aut"))
 Depends: R (>= 2.14.0), methods
 Suggests: interp, tgp, plgp, MASS
 Description: Inference by sequential Monte Carlo for 
@@ -17,6 +26,9 @@ Maintainer: Robert B. Gramacy  <rbg@vt.edu>
 License: LGPL
 URL: https://bobby.gramacy.com/r_packages/dynaTree/
 NeedsCompilation: yes
-Packaged: 2023-08-22 13:43:34 UTC; bobby
+Packaged: 2024-08-21 11:49:37 UTC; bobby
+Author: Robert B. Gramacy [aut, cre],
+  Matt A. Taddy [aut],
+  Christoforos Anagnostopoulos [aut]
 Repository: CRAN
-Date/Publication: 2023-08-23 07:10:02 UTC
+Date/Publication: 2024-08-22 05:40:02 UTC

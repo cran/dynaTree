@@ -25,14 +25,15 @@
 
 #include <Rmath.h>
 #include <R.h>
+#include <R_ext/Error.h>
 extern "C" {
 #include "matrix.h"
 #include "rhelp.h"
 #include "lh.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
 }
+#include <cstdio>
+#include <cassert>
+#include <cstdlib>
 #include "particle.h"
 
 

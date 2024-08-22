@@ -29,6 +29,7 @@
 #include <strings.h>
 #include <assert.h>
 #include <Rmath.h>
+#include <R_ext/Error.h>
 #include "lh.h"
 #include "matrix.h"
 #include "rhelp.h"
@@ -441,7 +442,7 @@ void printRect(FILE* outfile, int d, double** rect)
 
 void errorBadRect(void)
 {
-  error("bad rectangle format"); 
+  Rf_error("bad rectangle format"); 
 }
 
 

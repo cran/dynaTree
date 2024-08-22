@@ -27,10 +27,10 @@
 #define __TREE_H__ 
 
 extern "C" {
-#include <stdio.h>
 #include "pall.h"
 #include "matrix.h"
 }
+#include <cstdio>
 
 class Particle;
 
